@@ -1175,6 +1175,15 @@ function ConfigAdmin({
 function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
   const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -1196,11 +1205,20 @@ function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
       console.log('OTP sign-in result', { data, error });
     }
     if (error) {
-      toast.error(error.message);
+      const isRateLimit = (error as any)?.status === 429 || error.message.toLowerCase().includes('rate');
+      if (isRateLimit) {
+        toast.error('Muitos pedidos', {
+          description: 'Aguarde antes de reenviar o link.',
+        });
+        setCooldown(60);
+      } else {
+        toast.error(error.message);
+      }
     } else {
       toast.success('Link enviado — verifique seu e-mail', {
         description: 'Abra no Safari e clique apenas 1 vez.',
       });
+      setCooldown(60);
     }
     setSending(false);
   };
@@ -1225,17 +1243,17 @@ function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
               placeholder="admin@familia.com"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              disabled={!supabaseReady || sending}
+              disabled={!supabaseReady || sending || cooldown > 0}
             />
           </div>
-          <Button type="submit" disabled={!supabaseReady || sending} className="w-full">
+          <Button type="submit" disabled={!supabaseReady || sending || cooldown > 0} className="w-full">
             {sending ? (
               <>
                 <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
                 Enviando...
               </>
             ) : (
-              'Receber link'
+              cooldown > 0 ? `Reenviar em ${cooldown}s` : 'Receber link'
             )}
           </Button>
         </form>
