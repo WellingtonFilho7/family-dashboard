@@ -37,9 +37,13 @@ type UseKioskOptions = {
   sessionToken?: string | null;
 };
 
-const hasSupabaseEnv =
-  Boolean(import.meta.env.VITE_SUPABASE_URL) &&
-  Boolean(import.meta.env.VITE_SUPABASE_ANON_KEY);
+const supabaseUrlEnv = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonEnv = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const hasSupabaseUrl = Boolean(supabaseUrlEnv);
+const hasSupabaseAnon = Boolean(supabaseAnonEnv);
+const hasSupabaseEnv = hasSupabaseUrl && hasSupabaseAnon;
+const debugSupabase =
+  import.meta.env.DEV || import.meta.env.VITE_DEBUG_SUPABASE === 'true';
 
 export function useKioskData(
   visitMode: boolean,
@@ -56,6 +60,35 @@ export function useKioskData(
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
+    if (debugSupabase) {
+      const host = hasSupabaseUrl
+        ? (() => {
+            try {
+              return new URL(supabaseUrlEnv as string).host;
+            } catch {
+              return 'invalid-url';
+            }
+          })()
+        : 'missing';
+      // Diagnóstico (dev / toggle)
+      console.log('[supabase-debug]', {
+        isProd,
+        hasSupabaseEnv,
+        hasSupabaseUrl,
+        hasSupabaseAnon,
+        hasConfig,
+        supabaseReady: Boolean(supabase),
+        supabaseUrlHost: host,
+      });
+    }
+
+    const missingEnv = [
+      !hasSupabaseUrl ? 'VITE_SUPABASE_URL' : null,
+      !hasSupabaseAnon ? 'VITE_SUPABASE_ANON_KEY' : null,
+    ]
+      .filter(Boolean)
+      .join(', ');
+
     const load = async () => {
       setLoading(true);
       setError(null);
@@ -79,7 +112,11 @@ export function useKioskData(
           setRawData(mockData);
           setRoutineChecks(mockData.kidRoutineChecks);
         } else {
-          setError('Supabase não configurado');
+          setError(
+            `Supabase não configurado${
+              missingEnv ? ` (${missingEnv})` : ''
+            }`
+          );
           setRawData(null);
           setRoutineChecks([]);
         }
@@ -95,7 +132,11 @@ export function useKioskData(
     // Em produção sem config, não tenta mock
     if (isProd && !hasConfig) {
       setLoading(false);
-      setError('Supabase não configurado');
+      setError(
+        `Supabase não configurado${
+          missingEnv ? ` (${missingEnv})` : ''
+        }`
+      );
       return;
     }
 
@@ -275,7 +316,7 @@ export function useKioskData(
 }
 
 async function fetchAll(): Promise<FamilyData> {
-  if (!supabase) throw new Error('Supabase não configurado');
+  if (!supabase) throw new Error('Supabase não configurado (client não criado)');
 
   const [
     peopleRes,
