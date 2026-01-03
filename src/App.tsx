@@ -20,6 +20,7 @@ import {
 } from 'react-router-dom';
 import { addDays, format, formatISO } from 'date-fns';
 import { Toaster, toast } from 'sonner';
+import type { Session } from '@supabase/supabase-js';
 
 import { useKioskData } from '@/hooks/useKioskData';
 import {
@@ -80,8 +81,17 @@ function PanelPage() {
   const [visitMode, setVisitMode] = useState(false);
   const [clock, setClock] = useState(new Date());
   const [qrOpen, setQrOpen] = useState(false);
-  const { data, loading, calendarByDay, weekDays, routineChecks, toggleRoutine } =
-    useKioskData(visitMode);
+  const {
+    data,
+    loading,
+    calendarByDay,
+    weekDays,
+    routineChecks,
+    toggleRoutine,
+    isMock,
+    isProd,
+    error,
+  } = useKioskData(visitMode);
 
   useEffect(() => {
     const id = setInterval(() => setClock(new Date()), 30_000);
@@ -166,6 +176,27 @@ function PanelPage() {
                 </CardHeader>
               </Card>
             ) : null}
+
+            {error && isProd && (
+              <Card className="border-destructive/40 bg-destructive/5">
+                <CardHeader>
+                  <CardTitle className="text-destructive">Aviso</CardTitle>
+                  <CardDescription className="text-destructive">
+                    {error}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            )}
+            {isMock && (
+              <Card className="border-amber-200 bg-amber-50">
+                <CardHeader>
+                  <CardTitle className="text-amber-700">Modo mock (dev)</CardTitle>
+                  <CardDescription>
+                    Supabase não configurado em desenvolvimento. Dados não são reais.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            )}
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -379,7 +410,7 @@ function KidsGrid({
   people: Person[];
   templates: KidRoutineTemplate[];
   checks: KidRoutineCheck[];
-  onToggle: (templateId: string) => void;
+  onToggle: (templateId: string) => Promise<void> | void;
   visitMode: boolean;
 }) {
   const todayKey = formatISO(new Date(), { representation: 'date' });
@@ -634,9 +665,27 @@ type AdminCategory =
 
 function EditPage() {
   const navigate = useNavigate();
-  const supabaseReady = Boolean(supabase);
-  const { data, loading, refresh } = useKioskData(false, true);
+  const [session, setSession] = useState<Session | null>(null);
   const [category, setCategory] = useState<AdminCategory>('people');
+
+  const { data, loading, refresh, isMock, hasConfig } = useKioskData(false, {
+    bypassVisitMode: true,
+    requireAuth: true,
+    sessionToken: session?.access_token ?? null,
+  });
+
+  const supabaseReady = Boolean(supabase) && hasConfig;
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-6">
@@ -670,7 +719,17 @@ function EditPage() {
           </Card>
         ) : null}
 
-        <div className="flex flex-wrap gap-2">
+        {isMock ? (
+          <Card className="border-amber-200 bg-amber-50">
+            <CardHeader>
+              <CardTitle className="text-amber-700">Modo mock</CardTitle>
+              <CardDescription>Sem credenciais Supabase; dados não serão salvos.</CardDescription>
+            </CardHeader>
+          </Card>
+        ) : null}
+
+        {session ? (
+          <div className="flex flex-wrap gap-2">
           {[
             { key: 'people', label: 'Pessoas' },
             { key: 'agenda', label: 'Agenda' },
@@ -688,63 +747,74 @@ function EditPage() {
               {item.label}
             </Button>
           ))}
-        </div>
+          </div>
+        ) : null}
 
-        <div className="grid grid-cols-1 gap-4">
-          {category === 'people' && (
-            <PeopleAdmin
-              people={data?.people ?? []}
-              loading={loading}
-              refresh={refresh}
-              disabled={!supabaseReady}
-            />
-          )}
-          {category === 'agenda' && (
-            <AgendaAdmin
-              people={data?.people ?? []}
-              recurring={data?.recurringItems ?? []}
-              oneOff={data?.oneOffItems ?? []}
-              loading={loading}
-              refresh={refresh}
-              disabled={!supabaseReady}
-            />
-          )}
-          {category === 'routines' && (
-            <RoutinesAdmin
-              people={data?.people ?? []}
-              templates={data?.kidRoutineTemplates ?? []}
-              loading={loading}
-              refresh={refresh}
-              disabled={!supabaseReady}
-            />
-          )}
-          {category === 'replenish' && (
-            <ReplenishAdmin
-              items={data?.replenishItems ?? []}
-              loading={loading}
-              refresh={refresh}
-              disabled={!supabaseReady}
-            />
-          )}
-          {category === 'content' && (
-            <ContentAdmin
-              people={data?.people ?? []}
-              focus={data?.weeklyFocus ?? []}
-              notes={data?.homeschoolNotes ?? []}
-              loading={loading}
-              refresh={refresh}
-              disabled={!supabaseReady}
-            />
-          )}
-          {category === 'config' && (
-            <ConfigAdmin
-              visitMode={data?.settings.visitMode ?? false}
-              loading={loading}
-              refresh={refresh}
-              disabled={!supabaseReady}
-            />
-          )}
-        </div>
+        {!session ? (
+          <LoginCard supabaseReady={supabaseReady} />
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {category === 'people' && (
+              <PeopleAdmin
+                people={data?.people ?? []}
+                loading={loading}
+                refresh={refresh}
+                disabled={!supabaseReady || !session}
+                hasSession={Boolean(session)}
+              />
+            )}
+            {category === 'agenda' && (
+              <AgendaAdmin
+                people={data?.people ?? []}
+                recurring={data?.recurringItems ?? []}
+                oneOff={data?.oneOffItems ?? []}
+                loading={loading}
+                refresh={refresh}
+                disabled={!supabaseReady || !session}
+                hasSession={Boolean(session)}
+              />
+            )}
+            {category === 'routines' && (
+              <RoutinesAdmin
+                people={data?.people ?? []}
+                templates={data?.kidRoutineTemplates ?? []}
+                loading={loading}
+                refresh={refresh}
+                disabled={!supabaseReady || !session}
+                hasSession={Boolean(session)}
+              />
+            )}
+            {category === 'replenish' && (
+              <ReplenishAdmin
+                items={data?.replenishItems ?? []}
+                loading={loading}
+                refresh={refresh}
+                disabled={!supabaseReady || !session}
+                hasSession={Boolean(session)}
+              />
+            )}
+            {category === 'content' && (
+              <ContentAdmin
+                people={data?.people ?? []}
+                focus={data?.weeklyFocus ?? []}
+                notes={data?.homeschoolNotes ?? []}
+                loading={loading}
+                refresh={refresh}
+                disabled={!supabaseReady || !session}
+                hasSession={Boolean(session)}
+              />
+            )}
+            {category === 'config' && (
+              <ConfigAdmin
+                visitMode={data?.settings.visitMode ?? false}
+                loading={loading}
+                refresh={refresh}
+                disabled={!supabaseReady || !session}
+                hasSession={Boolean(session)}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -755,11 +825,13 @@ function PeopleAdmin({
   loading,
   refresh,
   disabled,
+  hasSession,
 }: {
   people: Person[];
   loading: boolean;
   refresh: () => Promise<void>;
   disabled: boolean;
+  hasSession: boolean;
 }) {
   const [form, setForm] = useState({
     name: '',
@@ -770,7 +842,10 @@ function PeopleAdmin({
   });
 
   const handleCreate = async () => {
-    if (!supabase) return;
+    if (!supabase || !hasSession) {
+      toast.error('Faça login para editar');
+      return;
+    }
     if (!form.name) {
       toast.error('Nome é obrigatório');
       return;
@@ -789,7 +864,10 @@ function PeopleAdmin({
   };
 
   const updatePerson = async (id: string, patch: Record<string, any>) => {
-    if (!supabase) return;
+    if (!supabase || !hasSession) {
+      toast.error('Faça login para editar');
+      return;
+    }
     const { error } = await supabase.from('people').update(patch).eq('id', id);
     if (error) toast.error(error.message);
     else {
@@ -799,7 +877,10 @@ function PeopleAdmin({
   };
 
   const deletePerson = async (id: string) => {
-    if (!supabase) return;
+    if (!supabase || !hasSession) {
+      toast.error('Faça login para editar');
+      return;
+    }
     const { error } = await supabase.from('people').delete().eq('id', id);
     if (error) toast.error(error.message);
     else {
@@ -922,6 +1003,7 @@ function AgendaAdmin({
   loading,
   refresh,
   disabled,
+  hasSession,
 }: {
   people: Person[];
   recurring: RecurringItem[];
@@ -929,6 +1011,7 @@ function AgendaAdmin({
   loading: boolean;
   refresh: () => Promise<void>;
   disabled: boolean;
+  hasSession: boolean;
 }) {
   const [recForm, setRecForm] = useState({
     title: '',
@@ -956,7 +1039,10 @@ function AgendaAdmin({
   ];
 
   const createRecurring = async () => {
-    if (!supabase) return;
+    if (!supabase || !hasSession) {
+      toast.error('Faça login para editar');
+      return;
+    }
     if (!recForm.title || !recForm.personId) return toast.error('Título e pessoa são obrigatórios');
     const { error } = await supabase.from('recurring_items').insert({
       title: recForm.title,
@@ -972,7 +1058,10 @@ function AgendaAdmin({
   };
 
   const createOneOff = async () => {
-    if (!supabase) return;
+    if (!supabase || !hasSession) {
+      toast.error('Faça login para editar');
+      return;
+    }
     if (!oneOffForm.title || !oneOffForm.personId || !oneOffForm.date) {
       return toast.error('Título, pessoa e data são obrigatórios');
     }
@@ -990,7 +1079,10 @@ function AgendaAdmin({
   };
 
   const deleteItem = async (table: 'recurring_items' | 'one_off_items', id: string) => {
-    if (!supabase) return;
+    if (!supabase || !hasSession) {
+      toast.error('Faça login para editar');
+      return;
+    }
     const { error } = await supabase.from(table).delete().eq('id', id);
     if (error) toast.error(error.message);
     else {
@@ -1228,12 +1320,14 @@ function RoutinesAdmin({
   loading,
   refresh,
   disabled,
+  hasSession,
 }: {
   people: Person[];
   templates: KidRoutineTemplate[];
   loading: boolean;
   refresh: () => Promise<void>;
   disabled: boolean;
+  hasSession: boolean;
 }) {
   const kids = people.filter((p) => p.type === 'kid');
   const [form, setForm] = useState({
@@ -1243,7 +1337,10 @@ function RoutinesAdmin({
   });
 
   const createTemplate = async () => {
-    if (!supabase) return;
+    if (!supabase || !hasSession) {
+      toast.error('Faça login para editar');
+      return;
+    }
     if (!form.title || !form.personId) return toast.error('Título e criança são obrigatórios');
     const { error } = await supabase.from('kid_routine_templates').insert({
       title: form.title,
@@ -1258,7 +1355,10 @@ function RoutinesAdmin({
   };
 
   const toggleTemplate = async (id: string, field: 'is_active' | 'is_private', value: boolean) => {
-    if (!supabase) return;
+    if (!supabase || !hasSession) {
+      toast.error('Faça login para editar');
+      return;
+    }
     const { error } = await supabase.from('kid_routine_templates').update({ [field]: value }).eq('id', id);
     if (error) toast.error(error.message);
     else {
@@ -1268,7 +1368,10 @@ function RoutinesAdmin({
   };
 
   const deleteTemplate = async (id: string) => {
-    if (!supabase) return;
+    if (!supabase || !hasSession) {
+      toast.error('Faça login para editar');
+      return;
+    }
     const { error } = await supabase.from('kid_routine_templates').delete().eq('id', id);
     if (error) toast.error(error.message);
     else {
@@ -1371,11 +1474,13 @@ function ReplenishAdmin({
   loading,
   refresh,
   disabled,
+  hasSession,
 }: {
   items: ReplenishItem[];
   loading: boolean;
   refresh: () => Promise<void>;
   disabled: boolean;
+  hasSession: boolean;
 }) {
   const [form, setForm] = useState({
     title: '',
@@ -1384,7 +1489,10 @@ function ReplenishAdmin({
   });
 
   const createItem = async () => {
-    if (!supabase) return;
+    if (!supabase || !hasSession) {
+      toast.error('Faça login para editar');
+      return;
+    }
     if (!form.title) return toast.error('Título é obrigatório');
     const { error } = await supabase.from('replenish_items').insert({
       title: form.title,
@@ -1399,7 +1507,10 @@ function ReplenishAdmin({
   };
 
   const updateItem = async (id: string, patch: Record<string, any>) => {
-    if (!supabase) return;
+    if (!supabase || !hasSession) {
+      toast.error('Faça login para editar');
+      return;
+    }
     const { error } = await supabase.from('replenish_items').update(patch).eq('id', id);
     if (error) toast.error(error.message);
     else {
@@ -1409,7 +1520,10 @@ function ReplenishAdmin({
   };
 
   const deleteItem = async (id: string) => {
-    if (!supabase) return;
+    if (!supabase || !hasSession) {
+      toast.error('Faça login para editar');
+      return;
+    }
     const { error } = await supabase.from('replenish_items').delete().eq('id', id);
     if (error) toast.error(error.message);
     else {
@@ -1515,6 +1629,7 @@ function ContentAdmin({
   loading,
   refresh,
   disabled,
+  hasSession,
 }: {
   people: Person[];
   focus: WeeklyFocus[];
@@ -1522,6 +1637,7 @@ function ContentAdmin({
   loading: boolean;
   refresh: () => Promise<void>;
   disabled: boolean;
+  hasSession: boolean;
 }) {
   const [focusForm, setFocusForm] = useState({
     text: focus.find((f) => f.isActive)?.text ?? '',
@@ -1531,7 +1647,10 @@ function ContentAdmin({
   const [noteContent, setNoteContent] = useState('');
 
   const saveFocus = async () => {
-    if (!supabase) return;
+    if (!supabase || !hasSession) {
+      toast.error('Faça login para editar');
+      return;
+    }
     if (!focusForm.text) return toast.error('Texto é obrigatório');
     // desativar todos e ativar novo
     await supabase.from('weekly_focus').update({ is_active: false });
@@ -1546,7 +1665,10 @@ function ContentAdmin({
   };
 
   const saveNotes = async () => {
-    if (!supabase || !noteKid) return;
+    if (!supabase || !noteKid || !hasSession) {
+      toast.error('Faça login para editar');
+      return;
+    }
     const list = noteContent
       .split('\n')
       .map((l) => l.trim())
@@ -1630,14 +1752,19 @@ function ConfigAdmin({
   loading,
   refresh,
   disabled,
+  hasSession,
 }: {
   visitMode: boolean;
   loading: boolean;
   refresh: () => Promise<void>;
   disabled: boolean;
+  hasSession: boolean;
 }) {
   const toggleVisit = async () => {
-    if (!supabase) return;
+    if (!supabase || !hasSession) {
+      toast.error('Faça login para editar');
+      return;
+    }
     const { error } = await supabase
       .from('settings')
       .upsert({ id: 1, visit_mode: !visitMode }, { onConflict: 'id' });
@@ -1657,6 +1784,72 @@ function ConfigAdmin({
       <CardContent className="flex items-center gap-3">
         <span className="text-sm font-semibold">Modo visitas</span>
         <Switch checked={visitMode} onCheckedChange={toggleVisit} disabled={disabled || loading} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
+  const [email, setEmail] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const handleLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!supabase) {
+      toast.error('Configurar VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
+      return;
+    }
+    if (!email) {
+      toast.error('Informe um e-mail');
+      return;
+    }
+    setSending(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/editar` },
+    });
+    setSending(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Link de login enviado');
+    }
+  };
+
+  return (
+    <Card className="w-full max-w-md border border-border/60 bg-white/90">
+      <CardHeader>
+        <CardTitle>Área administrativa</CardTitle>
+        <CardDescription>Login via Supabase Auth (OTP por e-mail).</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground">
+          {supabaseReady
+            ? 'Insira seu e-mail para receber um link de acesso seguro.'
+            : 'Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para ativar o login.'}
+        </div>
+        <form className="space-y-3" onSubmit={handleLogin}>
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-foreground">E-mail</label>
+            <Input
+              type="email"
+              placeholder="admin@familia.com"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              disabled={!supabaseReady || sending}
+            />
+          </div>
+          <Button type="submit" disabled={!supabaseReady || sending} className="w-full">
+            {sending ? (
+              <>
+                <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
+                Enviando...
+              </>
+            ) : (
+              'Receber link'
+            )}
+          </Button>
+        </form>
       </CardContent>
     </Card>
   );

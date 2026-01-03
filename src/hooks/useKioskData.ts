@@ -31,11 +31,27 @@ const maskNames = (people: Person[], hide: boolean) =>
       : person
   );
 
-export function useKioskData(visitMode: boolean, bypassVisitMode = false) {
+type UseKioskOptions = {
+  bypassVisitMode?: boolean;
+  requireAuth?: boolean;
+  sessionToken?: string | null;
+};
+
+const hasSupabaseEnv =
+  Boolean(import.meta.env.VITE_SUPABASE_URL) &&
+  Boolean(import.meta.env.VITE_SUPABASE_ANON_KEY);
+
+export function useKioskData(
+  visitMode: boolean,
+  { bypassVisitMode = false, requireAuth = false, sessionToken = null }: UseKioskOptions = {}
+) {
   const [rawData, setRawData] = useState<FamilyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [routineChecks, setRoutineChecks] = useState<KidRoutineCheck[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const isProd = import.meta.env.PROD;
+  const isMock = !isProd && (!supabase || !hasSupabaseEnv);
+  const hasConfig = Boolean(supabase) && hasSupabaseEnv;
 
   useEffect(() => {
     let active = true;
@@ -44,16 +60,28 @@ export function useKioskData(visitMode: boolean, bypassVisitMode = false) {
       setLoading(true);
       setError(null);
       try {
-        if (supabase) {
+        if (requireAuth && (!sessionToken || sessionToken.length === 0)) {
+          if (!active) return;
+          setRawData(null);
+          setRoutineChecks([]);
+          setError('Sessão necessária para carregar dados.');
+          return;
+        }
+
+        if (supabase && hasConfig) {
           const data = await fetchAll();
           if (!active) return;
           setRawData(data);
           setRoutineChecks(data.kidRoutineChecks);
-        } else {
+        } else if (isMock) {
           await new Promise((resolve) => setTimeout(resolve, 80));
           if (!active) return;
           setRawData(mockData);
           setRoutineChecks(mockData.kidRoutineChecks);
+        } else {
+          setError('Supabase não configurado');
+          setRawData(null);
+          setRoutineChecks([]);
         }
       } catch (error) {
         if (!active) return;
@@ -64,13 +92,20 @@ export function useKioskData(visitMode: boolean, bypassVisitMode = false) {
         if (active) setLoading(false);
       }
     };
+    // Em produção sem config, não tenta mock
+    if (isProd && !hasConfig) {
+      setLoading(false);
+      setError('Supabase não configurado');
+      return;
+    }
+
     load();
 
     return () => {
       active = false;
       controller.abort();
     };
-  }, []);
+  }, [hasConfig, isMock, isProd, requireAuth, sessionToken]);
 
   const weekStart = useMemo(
     () => startOfWeek(new Date(), { weekStartsOn: 0 }),
@@ -207,6 +242,9 @@ export function useKioskData(visitMode: boolean, bypassVisitMode = false) {
     data,
     loading,
     error,
+    isMock,
+    isProd,
+    hasConfig,
     weekStart,
     weekDays,
     calendarByDay,
