@@ -17,21 +17,21 @@ export const mockData: FamilyData = {
     {
       id: 'r1',
       title: 'Devocional manhã',
-      dayOfWeek: 1,
+      dayOfWeek: 2,
       timeText: '07:30',
       personId: 'leia',
     },
     {
       id: 'r2',
       title: 'Jiu-jitsu',
-      dayOfWeek: 2,
+      dayOfWeek: 3,
       timeText: '18:00',
       personId: 'benjamin',
     },
     {
       id: 'r3',
       title: 'Aula música',
-      dayOfWeek: 4,
+      dayOfWeek: 5,
       timeText: '16:30',
       personId: 'jose',
       isPrivate: true,
@@ -39,7 +39,7 @@ export const mockData: FamilyData = {
     {
       id: 'r4',
       title: 'Célula família',
-      dayOfWeek: 5,
+      dayOfWeek: 6,
       timeText: '20:00',
       personId: 'pai',
     },

@@ -6,12 +6,13 @@ export interface Person {
   color: string;
   type: PersonType;
   isPrivate?: boolean;
+  sortOrder?: number;
 }
 
 export interface RecurringItem {
   id: string;
   title: string;
-  dayOfWeek: number; // 0 = Sunday
+  dayOfWeek: number; // 1 = Sunday ... 7 = Saturday
   timeText: string;
   personId: string;
   isPrivate?: boolean;
