@@ -1163,16 +1163,22 @@ function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
       return;
     }
     setSending(true);
-    const { error } = await supabase.auth.signInWithOtp({
+    const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: `${window.location.origin}/editar` },
     });
-    setSending(false);
+    if (import.meta.env.DEV) {
+      // Debug apenas em desenvolvimento
+      console.log('OTP sign-in result', { data, error });
+    }
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success('Link de login enviado');
+      toast.success('Link enviado — verifique seu e-mail', {
+        description: 'Abra no Safari e clique apenas 1 vez.',
+      });
     }
+    setSending(false);
   };
 
   return (
