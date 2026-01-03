@@ -43,6 +43,30 @@ function EditPage() {
   const supabaseReady = Boolean(supabase) && hasConfig;
 
   useEffect(() => {
+    const handleHashErrors = () => {
+      const hash = window.location.hash || '';
+      if (!hash.includes('error')) return;
+      const params = new URLSearchParams(hash.replace(/^#/, ''));
+      const errorCode = params.get('error_code');
+      const error = params.get('error');
+      const errorDescription = params.get('error_description');
+
+      if (errorCode === 'otp_expired' || errorCode === 'access_denied') {
+        toast.error('Link expirado ou inválido', {
+          description: 'Solicite um novo link e abra apenas uma vez.',
+        });
+      } else if (error || errorDescription) {
+        toast.error(error || 'Erro de autenticação', {
+          description: errorDescription ?? undefined,
+        });
+      }
+
+      // Limpa o hash para evitar loops
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+    };
+
+    handleHashErrors();
+
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
