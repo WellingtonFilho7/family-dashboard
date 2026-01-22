@@ -38,6 +38,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components';
+import { getFamilyDateKey } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
 import type { CalendarItem, KidRoutineCheck, KidRoutineTemplate, Person } from '@/lib/types';
 import EditPage from '@/pages/EditPage';
@@ -379,7 +380,7 @@ function KidsGrid({
   onToggle: (templateId: string) => Promise<void> | void;
   visitMode: boolean;
 }) {
-  const todayKey = formatISO(new Date(), { representation: 'date' });
+  const todayKey = getFamilyDateKey();
 
   if (visitMode) {
     return (
