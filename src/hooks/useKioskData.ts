@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
-import { addDays, formatISO, isSameDay, startOfWeek } from 'date-fns';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { addDays, isSameDay, startOfWeek } from 'date-fns';
 import { toast } from 'sonner';
 
+import { getFamilyDate, getFamilyDateKey, parseDateOnly } from '@/lib/date-utils';
 import { supabase } from '@/lib/supabase';
 import { mockData } from '@/lib/mockData';
+import { computeRoutineToggle } from '@/lib/routine-utils';
 import type {
   CalendarItem,
   FamilyData,
@@ -52,6 +54,8 @@ export function useKioskData(
   const [rawData, setRawData] = useState<FamilyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [routineChecks, setRoutineChecks] = useState<KidRoutineCheck[]>([]);
+  const routineChecksRef = useRef<KidRoutineCheck[]>([]);
+  const pendingRoutineKeysRef = useRef(new Set<string>());
   const [error, setError] = useState<string | null>(null);
   const isProd = import.meta.env.PROD;
   const isMock = !isProd && (!supabase || !hasSupabaseEnv);
@@ -148,8 +152,12 @@ export function useKioskData(
     };
   }, [hasConfig, isMock, isProd, requireAuth, sessionToken]);
 
+  useEffect(() => {
+    routineChecksRef.current = routineChecks;
+  }, [routineChecks]);
+
   const weekStart = useMemo(
-    () => startOfWeek(new Date(), { weekStartsOn: 0 }),
+    () => startOfWeek(getFamilyDate(), { weekStartsOn: 0 }),
     []
   );
   const weekDays = useMemo(
@@ -194,7 +202,7 @@ export function useKioskData(
 
     const oneOffItems: CalendarItem[] = data.oneOffItems
       .map((item) => {
-        const date = new Date(item.date);
+        const date = parseDateOnly(item.date);
         const person = personById.get(item.personId);
         return {
           id: item.id,
@@ -219,64 +227,47 @@ export function useKioskData(
   }, [data, weekDays, weekStart]);
 
   const toggleRoutine = async (templateId: string) => {
-    const todayKey = formatISO(new Date(), { representation: 'date' });
-    let nextCompleted = true;
-    if (supabase) {
-      const existing = routineChecks.find(
-        (check) => check.templateId === templateId && check.date === todayKey
-      );
-      nextCompleted = existing ? !existing.completed : true;
-      const { error: upsertError } = await supabase.from('kid_routine_checks').upsert(
-        {
-          template_id: templateId,
-          date: todayKey,
-          completed: nextCompleted,
-        },
-        { onConflict: 'template_id,date' }
-      );
-      if (upsertError) {
-        toast.error('Erro ao salvar rotina');
-        return existing?.completed ?? false;
-      }
-      setRoutineChecks((prev) => {
-        const found = prev.find(
-          (check) => check.templateId === templateId && check.date === todayKey
-        );
-        if (found) {
-          return prev.map((check) =>
-            check.id === found.id ? { ...check, completed: nextCompleted } : check
-          );
-        }
-        const newCheck: KidRoutineCheck = {
-          id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
-          templateId,
-          date: todayKey,
-          completed: nextCompleted,
-        };
-        return [...prev, newCheck];
-      });
-    } else {
-      setRoutineChecks((prev) => {
-        const existing = prev.find(
-          (check) => check.templateId === templateId && check.date === todayKey
-        );
-        if (existing) {
-          nextCompleted = !existing.completed;
-          return prev.map((check) =>
-            check.id === existing.id ? { ...check, completed: !check.completed } : check
-          );
-        }
-        const newCheck: KidRoutineCheck = {
-          id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
-          templateId,
-          date: todayKey,
-          completed: true,
-        };
-        nextCompleted = true;
-        return [...prev, newCheck];
-      });
+    const todayKey = getFamilyDateKey();
+    const toggleKey = `${templateId}-${todayKey}`;
+    const currentChecks = routineChecksRef.current;
+    const existing = currentChecks.find(
+      (check) => check.templateId === templateId && check.date === todayKey
+    );
+
+    if (pendingRoutineKeysRef.current.has(toggleKey)) {
+      return existing?.completed ?? false;
     }
-    return nextCompleted;
+
+    pendingRoutineKeysRef.current.add(toggleKey);
+    try {
+      const { nextCompleted, updatedChecks } = computeRoutineToggle(
+        currentChecks,
+        templateId,
+        todayKey,
+        () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`)
+      );
+
+      if (supabase) {
+        const { error: upsertError } = await supabase.from('kid_routine_checks').upsert(
+          {
+            template_id: templateId,
+            date: todayKey,
+            completed: nextCompleted,
+          },
+          { onConflict: 'template_id,date' }
+        );
+        if (upsertError) {
+          toast.error('Erro ao salvar rotina');
+          return existing?.completed ?? false;
+        }
+      }
+
+      routineChecksRef.current = updatedChecks;
+      setRoutineChecks(updatedChecks);
+      return nextCompleted;
+    } finally {
+      pendingRoutineKeysRef.current.delete(toggleKey);
+    }
   };
 
   return {
