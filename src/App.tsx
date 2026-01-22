@@ -42,6 +42,7 @@ import {
 import { getDesktopOverrideFromSearch, resolveDesktopOverride } from '@/lib/desktop-override';
 import { isDebugEnabled } from '@/lib/debug-utils';
 import { getFamilyDateKey } from '@/lib/date-utils';
+import { getVisibleWithOverflow } from '@/lib/list-utils';
 import { cn } from '@/lib/utils';
 import type { CalendarItem, KidRoutineCheck, KidRoutineTemplate, Person } from '@/lib/types';
 import EditPage from '@/pages/EditPage';
@@ -555,7 +556,6 @@ function KidsGrid({
   onToggle: (templateId: string) => Promise<void> | void;
   visitMode: boolean;
 }) {
-  const desktopOverride = useDesktopOverrideValue();
   const todayKey = getFamilyDateKey();
 
   if (visitMode) {
@@ -570,17 +570,13 @@ function KidsGrid({
   }
 
   return (
-    <div
-      className={cn(
-        'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3',
-        desktopOverride && 'grid-cols-3'
-      )}
-    >
+    <div className={cn('grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3')}>
       {people.map((kid) => {
         const kidTemplates = templates.filter((t) => t.personId === kid.id && t.isActive);
         const completedIds = checks
           .filter((c: any) => c.date === todayKey && c.completed)
           .map((c: any) => c.templateId);
+        const { visible: visibleRoutines, overflow: routineOverflow } = getVisibleWithOverflow(kidTemplates, 5);
 
         return (
           <Card key={kid.id} className="border bg-card">
@@ -597,7 +593,7 @@ function KidsGrid({
               {kidTemplates.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Sem rotinas ativas</p>
               ) : (
-                kidTemplates.map((routine) => {
+                visibleRoutines.map((routine) => {
                   const done = completedIds.includes(routine.id);
                   return (
                     <button
@@ -624,6 +620,9 @@ function KidsGrid({
                   );
                 })
               )}
+              {kidTemplates.length > 0 && routineOverflow > 0 ? (
+                <p className="text-xs text-muted-foreground">+{routineOverflow}</p>
+              ) : null}
             </CardContent>
           </Card>
         );
