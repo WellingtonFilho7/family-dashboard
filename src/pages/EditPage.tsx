@@ -5,6 +5,15 @@ import { toast } from 'sonner';
 import type { Session } from '@supabase/supabase-js';
 
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
   Button,
   Card,
   CardContent,
@@ -228,27 +237,47 @@ function PeopleAdmin({
     sortOrder: (people?.length ?? 0) + 1,
     isPrivate: false,
   });
+  const [isCreating, setIsCreating] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    if (!form.name.trim()) {
+      newErrors.name = 'Nome é obrigatório';
+    } else if (form.name.length > 50) {
+      newErrors.name = 'Nome muito longo (máx. 50 caracteres)';
+    }
+    if (!form.color.match(/^#[0-9A-F]{6}$/i)) {
+      newErrors.color = 'Cor inválida (use formato #RRGGBB)';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleCreate = async () => {
     if (!supabase || !hasSession) {
       toast.error('Faça login para editar');
       return;
     }
-    if (!form.name) {
-      toast.error('Nome é obrigatório');
+    if (!validateForm()) {
       return;
     }
-    const { error } = await supabase.from('people').insert({
-      name: form.name,
-      color: form.color,
-      type: form.type,
-      sort_order: form.sortOrder,
-      is_private: form.isPrivate,
-    });
-    if (error) return toast.error(error.message);
-    toast.success('Pessoa criada');
-    setForm((prev) => ({ ...prev, name: '' }));
-    refresh();
+    setIsCreating(true);
+    try {
+      const { error } = await supabase.from('people').insert({
+        name: form.name,
+        color: form.color,
+        type: form.type,
+        sort_order: form.sortOrder,
+        is_private: form.isPrivate,
+      });
+      if (error) return toast.error(error.message);
+      toast.success('Pessoa criada');
+      setForm((prev) => ({ ...prev, name: '' }));
+      await refresh();
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const updatePerson = async (id: string, patch: Record<string, any>) => {
@@ -264,16 +293,26 @@ function PeopleAdmin({
     }
   };
 
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const deletePerson = async (id: string) => {
     if (!supabase || !hasSession) {
       toast.error('Faça login para editar');
       return;
     }
-    const { error } = await supabase.from('people').delete().eq('id', id);
-    if (error) toast.error(error.message);
-    else {
-      toast.success('Removido');
-      refresh();
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.from('people').delete().eq('id', id);
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Removido');
+        setDeleteConfirm(null);
+        await refresh();
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -285,18 +324,52 @@ function PeopleAdmin({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Input
-            placeholder="Nome"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            disabled={disabled}
-          />
-          <Input
-            type="color"
-            value={form.color}
-            onChange={(e) => setForm({ ...form, color: e.target.value })}
-            disabled={disabled}
-          />
+          <div className="space-y-1">
+            <label htmlFor="person-name" className="text-sm font-semibold">
+              Nome
+            </label>
+            <Input
+              id="person-name"
+              placeholder="Ex: João Silva"
+              value={form.name}
+              onChange={(e) => {
+                setForm({ ...form, name: e.target.value });
+                if (errors.name) setErrors({ ...errors, name: '' });
+              }}
+              disabled={disabled}
+              className={errors.name ? 'border-destructive' : ''}
+              aria-invalid={!!errors.name}
+              aria-describedby={errors.name ? 'name-error' : undefined}
+            />
+            {errors.name && (
+              <p id="name-error" className="text-sm text-destructive" role="alert">
+                {errors.name}
+              </p>
+            )}
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="person-color" className="text-sm font-semibold">
+              Cor
+            </label>
+            <Input
+              id="person-color"
+              type="color"
+              value={form.color}
+              onChange={(e) => {
+                setForm({ ...form, color: e.target.value });
+                if (errors.color) setErrors({ ...errors, color: '' });
+              }}
+              disabled={disabled}
+              className={errors.color ? 'border-destructive' : ''}
+              aria-invalid={!!errors.color}
+              aria-describedby={errors.color ? 'color-error' : undefined}
+            />
+            {errors.color && (
+              <p id="color-error" className="text-sm text-destructive" role="alert">
+                {errors.color}
+              </p>
+            )}
+          </div>
           <select
             className="h-11 rounded-lg border px-3 text-sm"
             value={form.type}
@@ -322,8 +395,8 @@ function PeopleAdmin({
             />
             Privado
           </label>
-          <Button onClick={handleCreate} disabled={disabled || loading}>
-            Adicionar pessoa
+          <Button onClick={handleCreate} disabled={disabled || loading} isLoading={isCreating}>
+            {isCreating ? 'Adicionando...' : 'Adicionar pessoa'}
           </Button>
         </div>
 
@@ -365,14 +438,37 @@ function PeopleAdmin({
                 >
                   + Ordem
                 </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => deletePerson(person.id)}
-                  disabled={disabled}
-                >
-                  Remover
-                </Button>
+                <AlertDialog open={deleteConfirm === person.id} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => setDeleteConfirm(person.id)}
+                      disabled={disabled}
+                    >
+                      Remover
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Ao remover "{person.name}", todos os eventos e rotinas associados ficarão órfãos.
+                        Esta ação não pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => deletePerson(person.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? 'Removendo...' : 'Remover permanentemente'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           ))}

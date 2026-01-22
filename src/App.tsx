@@ -31,6 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
   Separator,
+  Skeleton,
   Switch,
   Tooltip,
   TooltipContent,
@@ -101,8 +102,8 @@ function PanelPage() {
   });
 
   return (
-    <div className="min-h-screen px-6 py-5">
-      <div className="flex gap-6">
+    <div className="min-h-screen px-4 py-5 pb-24 md:px-6 md:pb-5">
+      <div className="flex flex-col gap-6 lg:flex-row">
         <Sidebar
           active={viewMode}
           onChange={setViewMode}
@@ -111,18 +112,18 @@ function PanelPage() {
           onOpenQr={() => setQrOpen(true)}
         />
 
-        <div className="grid flex-1 grid-cols-[1fr_320px] gap-6">
+        <div className="grid flex-1 grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
           <div className="flex flex-col gap-4">
-            <header className="flex items-center justify-between gap-4 rounded-3xl border bg-white/70 px-6 py-4 backdrop-blur">
+            <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 rounded-3xl border bg-white/70 px-4 sm:px-6 py-4 backdrop-blur">
               <div className="space-y-1">
                 <p className="text-xs uppercase text-muted-foreground tracking-[0.2em]">
                   Família
                 </p>
-                <h1 className="text-3xl font-bold leading-tight">Painel semanal</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold leading-tight">Painel semanal</h1>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <p className="text-sm capitalize text-muted-foreground">{humanDate}</p>
-                <p className="text-4xl font-semibold tabular-nums">{format(clock, 'HH:mm')}</p>
+                <p className="text-3xl sm:text-4xl font-semibold tabular-nums">{format(clock, 'HH:mm')}</p>
               </div>
             </header>
 
@@ -169,19 +170,20 @@ function PanelPage() {
               </Card>
             )}
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Badge variant="muted">
-                  <Clock3 className="mr-2 h-4 w-4" />
-                  Semana atual • {format(weekDays[0], 'dd/MM')}–{format(addDays(weekDays[0], 6), 'dd/MM')}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <Badge variant="muted" className="text-xs">
+                  <Clock3 className="mr-1.5 h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Semana atual • </span>
+                  {format(weekDays[0], 'dd/MM')}–{format(addDays(weekDays[0], 6), 'dd/MM')}
                 </Badge>
-                <Badge variant="outline">
-                  <RefreshCcw className="mr-2 h-4 w-4" />
+                <Badge variant="outline" className="text-xs">
+                  <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
                   {visitLabel}
                 </Badge>
               </div>
               <div className="flex gap-2">
-                <span className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'cursor-default')}>
+                <span className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'cursor-default text-xs sm:text-sm')}>
                   {viewMode === 'calendar' ? 'Calendário semanal' : 'Rotinas das crianças'}
                 </span>
               </div>
@@ -230,8 +232,8 @@ function Sidebar({
   ];
 
   return (
-    <aside className="flex w-20 flex-col items-center gap-4 rounded-3xl border bg-white/80 px-3 py-4 shadow-sm backdrop-blur">
-      <div className="flex flex-col gap-2">
+    <aside className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white/95 backdrop-blur lg:static lg:w-20 lg:rounded-3xl lg:border lg:border-t lg:shadow-sm">
+      <div className="flex justify-around px-4 py-2 lg:flex-col lg:items-center lg:gap-2 lg:px-3 lg:py-4">
         {items.map((item) => (
           <Tooltip key={item.key}>
             <TooltipTrigger asChild>
@@ -241,37 +243,38 @@ function Sidebar({
                 aria-pressed={active === item.key}
                 onClick={() => onChange(item.key)}
                 className={cn(
-                  'h-12 w-12 rounded-2xl',
-                  active === item.key ? 'shadow-lg shadow-primary/10' : 'hover:bg-muted'
+                  'h-14 w-14 rounded-2xl lg:h-12 lg:w-12',
+                  active === item.key ? 'shadow-lg shadow-primary/10' : 'hover:bg-muted',
+                  'active:scale-95 transition-transform tap-highlight-transparent'
                 )}
               >
                 {item.icon}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{item.label}</TooltipContent>
+            <TooltipContent side="top" className="lg:side-right">{item.label}</TooltipContent>
           </Tooltip>
         ))}
       </div>
 
-      <Separator className="my-2 w-10" />
+      <Separator className="hidden lg:block lg:my-2 lg:w-10" />
 
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
             variant="ghost"
             size="icon"
-            className="h-12 w-12 rounded-2xl"
+            className="h-14 w-14 rounded-2xl lg:h-12 lg:w-12 active:scale-95 transition-transform"
             onClick={onOpenQr}
           >
             <QrCode className="h-5 w-5" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Editar via QR</TooltipContent>
+        <TooltipContent side="top" className="lg:side-right">Editar via QR</TooltipContent>
       </Tooltip>
 
-      <div className="mt-auto flex flex-col items-center gap-2 rounded-2xl bg-muted/50 p-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Modo visitas
+      <div className="flex items-center gap-2 rounded-2xl bg-muted/50 p-2 lg:mt-auto lg:flex-col lg:p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground lg:text-[11px]">
+          Visitas
         </p>
         <Switch checked={visitMode} onCheckedChange={onToggleVisit} />
       </div>
@@ -294,7 +297,7 @@ function CalendarGrid({
   return (
     <Card className="border-none bg-transparent shadow-none">
       <CardContent className="p-0">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {days.map(({ date, items }) => {
             const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' });
             const overflow = Math.max(items.length - 4, 0);
@@ -315,7 +318,17 @@ function CalendarGrid({
 
                 <div className="mt-3 flex flex-col gap-2">
                   {loading ? (
-                    <div className="h-24 rounded-xl bg-muted/60 animate-pulse" />
+                    <>
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="flex items-start gap-3 rounded-xl border border-border/60 p-3">
+                          <Skeleton className="mt-1 h-3 w-3 rounded-full" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-3 w-1/2" />
+                          </div>
+                        </div>
+                      ))}
+                    </>
                   ) : items.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Nada por aqui</p>
                   ) : (
@@ -381,7 +394,7 @@ function KidsGrid({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {people.map((kid) => {
         const kidTemplates = templates.filter((t) => t.personId === kid.id && t.isActive);
         const completedIds = checks
@@ -455,7 +468,7 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
   };
 
   return (
-    <div className="sticky top-5 flex flex-col gap-3">
+    <div className="flex flex-col gap-3 lg:sticky lg:top-5">
       <Card className="bg-white/80">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -466,7 +479,14 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="h-24 rounded-xl bg-muted/60 animate-pulse" />
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center justify-between rounded-xl border px-3 py-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
+              ))}
+            </div>
           ) : replenish.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nada pendente.</p>
           ) : (
@@ -519,7 +539,14 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
                   <p className="text-sm font-semibold">{name}</p>
                 </div>
                 {loading ? (
-                  <div className="h-16 rounded-lg bg-muted/60 animate-pulse" />
+                  <ul className="space-y-1">
+                    {[1, 2, 3].map((i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <Skeleton className="mt-1 h-1.5 w-1.5 rounded-full" />
+                        <Skeleton className="h-4 flex-1" />
+                      </li>
+                    ))}
+                  </ul>
                 ) : topics.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Sem tópicos</p>
                 ) : (
@@ -546,10 +573,20 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
 
 function QrModal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const editLink = `${window.location.origin}/editar`;
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const qrSize = isMobile ? 280 : 220;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Editar pelo celular</DialogTitle>
           <DialogDescription>
@@ -558,7 +595,7 @@ function QrModal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: b
         </DialogHeader>
         <div className="flex flex-col items-center gap-3">
           <div className="rounded-3xl border bg-white p-4 shadow-inner">
-            <QRCodeCanvas value={editLink} size={220} />
+            <QRCodeCanvas value={editLink} size={qrSize} className="w-full h-auto max-w-[280px]" />
           </div>
           <a
             href="/editar"
