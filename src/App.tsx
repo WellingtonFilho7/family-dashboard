@@ -10,7 +10,8 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { QRCodeCanvas } from 'qrcode.react';
-import { useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { addDays, format, formatISO } from 'date-fns';
 import { Toaster, toast } from 'sonner';
@@ -38,6 +39,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components';
+import { getDesktopOverrideFromSearch, resolveDesktopOverride } from '@/lib/desktop-override';
 import { isDebugEnabled } from '@/lib/debug-utils';
 import { getFamilyDateKey } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
@@ -47,16 +49,63 @@ import EditPage from '@/pages/EditPage';
 function App() {
   return (
     <BrowserRouter>
-      <TooltipProvider delayDuration={0}>
-        <Routes>
-          <Route path="/painel" element={<PanelPage />} />
-          <Route path="/editar" element={<EditPage />} />
-          <Route path="*" element={<Navigate to="/painel" replace />} />
-        </Routes>
-        <DebugOverlay />
-        <Toaster position="top-right" richColors closeButton />
-      </TooltipProvider>
+      <DesktopOverrideProvider>
+        <TooltipProvider delayDuration={0}>
+          <Routes>
+            <Route path="/painel" element={<PanelPage />} />
+            <Route path="/editar" element={<EditPage />} />
+            <Route path="*" element={<Navigate to="/painel" replace />} />
+          </Routes>
+          <DebugOverlay />
+          <Toaster position="top-right" richColors closeButton />
+        </TooltipProvider>
+      </DesktopOverrideProvider>
     </BrowserRouter>
+  );
+}
+
+const DESKTOP_OVERRIDE_STORAGE_KEY = 'family-dashboard:desktop-override';
+const DesktopOverrideContext = createContext(false);
+
+const useDesktopOverride = () => {
+  const location = useLocation();
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const fromSearch = getDesktopOverrideFromSearch(location.search);
+    const stored = window.localStorage.getItem(DESKTOP_OVERRIDE_STORAGE_KEY);
+    const nextEnabled = resolveDesktopOverride(location.search, stored);
+    setEnabled(nextEnabled);
+
+    if (fromSearch !== null) {
+      window.localStorage.setItem(
+        DESKTOP_OVERRIDE_STORAGE_KEY,
+        nextEnabled ? '1' : '0'
+      );
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (enabled) {
+      document.documentElement.dataset.desktop = '1';
+    } else {
+      delete document.documentElement.dataset.desktop;
+    }
+  }, [enabled]);
+
+  return enabled;
+};
+
+const useDesktopOverrideValue = () => useContext(DesktopOverrideContext);
+
+function DesktopOverrideProvider({ children }: { children: ReactNode }) {
+  const enabled = useDesktopOverride();
+  return (
+    <DesktopOverrideContext.Provider value={enabled}>
+      {children}
+    </DesktopOverrideContext.Provider>
   );
 }
 
@@ -140,6 +189,7 @@ function DebugOverlay() {
 type ViewMode = 'calendar' | 'kids';
 
 function PanelPage() {
+  const desktopOverride = useDesktopOverrideValue();
   const [viewMode, setViewMode] = useState<ViewMode>('calendar');
   const [visitMode, setVisitMode] = useState(false);
   const [clock, setClock] = useState(new Date());
@@ -183,7 +233,12 @@ function PanelPage() {
 
   return (
     <div className="min-h-screen px-4 py-5 pb-24 md:px-6 md:pb-5">
-      <div className="flex flex-col gap-6 lg:flex-row">
+      <div
+        className={cn(
+          'flex flex-col gap-6 lg:flex-row',
+          desktopOverride && 'flex-row'
+        )}
+      >
         <Sidebar
           active={viewMode}
           onChange={setViewMode}
@@ -192,7 +247,12 @@ function PanelPage() {
           onOpenQr={() => setQrOpen(true)}
         />
 
-        <div className="grid flex-1 grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        <div
+          className={cn(
+            'grid flex-1 grid-cols-1 lg:grid-cols-[1fr_320px] gap-6',
+            desktopOverride && 'grid-cols-[1fr_320px]'
+          )}
+        >
           <div className="flex flex-col gap-4">
             <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 rounded-lg border bg-card px-4 sm:px-6 py-4">
               <div className="space-y-1">
@@ -306,14 +366,25 @@ function Sidebar({
   onToggleVisit: () => void;
   onOpenQr: () => void;
 }) {
+  const desktopOverride = useDesktopOverrideValue();
   const items: Array<{ key: ViewMode; icon: React.ReactNode; label: string }> = [
     { key: 'calendar', icon: <CalendarRange className="h-5 w-5" />, label: 'Calendário' },
     { key: 'kids', icon: <Users className="h-5 w-5" />, label: 'Crianças' },
   ];
 
   return (
-    <aside className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card lg:static lg:w-20 lg:rounded-lg lg:border lg:border-t">
-      <div className="flex justify-around px-4 py-2 lg:flex-col lg:items-center lg:gap-2 lg:px-3 lg:py-4">
+    <aside
+      className={cn(
+        'fixed bottom-0 left-0 right-0 z-50 border-t bg-card lg:static lg:w-20 lg:rounded-lg lg:border lg:border-t',
+        desktopOverride && 'static w-20 rounded-lg border border-t'
+      )}
+    >
+      <div
+        className={cn(
+          'flex justify-around px-4 py-2 lg:flex-col lg:items-center lg:gap-2 lg:px-3 lg:py-4',
+          desktopOverride && 'flex-col items-center gap-2 px-3 py-4 justify-start'
+        )}
+      >
         {items.map((item) => (
           <Tooltip key={item.key}>
             <TooltipTrigger asChild>
@@ -324,6 +395,7 @@ function Sidebar({
                 onClick={() => onChange(item.key)}
                 className={cn(
                   'h-14 w-14 rounded-lg lg:h-12 lg:w-12',
+                  desktopOverride && 'h-12 w-12',
                   'active:scale-95 transition-transform tap-highlight-transparent'
                 )}
               >
@@ -335,14 +407,22 @@ function Sidebar({
         ))}
       </div>
 
-      <Separator className="hidden lg:block lg:my-2 lg:w-10" />
+      <Separator
+        className={cn(
+          'hidden lg:block lg:my-2 lg:w-10',
+          desktopOverride && 'block my-2 w-10'
+        )}
+      />
 
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
             variant="ghost"
             size="icon"
-            className="h-14 w-14 rounded-lg lg:h-12 lg:w-12 active:scale-95 transition-transform"
+            className={cn(
+              'h-14 w-14 rounded-lg lg:h-12 lg:w-12 active:scale-95 transition-transform',
+              desktopOverride && 'h-12 w-12'
+            )}
             onClick={onOpenQr}
           >
             <QrCode className="h-5 w-5" />
@@ -351,8 +431,18 @@ function Sidebar({
         <TooltipContent side="top" className="lg:side-right">Editar via QR</TooltipContent>
       </Tooltip>
 
-      <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 lg:mt-auto lg:flex-col lg:p-3">
-        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground lg:text-[11px]">
+      <div
+        className={cn(
+          'flex items-center gap-2 rounded-lg bg-muted/50 p-2 lg:mt-auto lg:flex-col lg:p-3',
+          desktopOverride && 'mt-auto flex-col p-3'
+        )}
+      >
+        <p
+          className={cn(
+            'text-[10px] font-medium uppercase tracking-wide text-muted-foreground lg:text-[11px]',
+            desktopOverride && 'text-[11px]'
+          )}
+        >
           Visitas
         </p>
         <Switch checked={visitMode} onCheckedChange={onToggleVisit} />
@@ -370,13 +460,19 @@ function CalendarGrid({
   days: { date: Date; items: CalendarItem[] }[];
   people: Person[];
 }) {
+  const desktopOverride = useDesktopOverrideValue();
   const personById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const fallbackColor = '#0EA5E9';
 
   return (
     <Card className="border-none bg-transparent shadow-none">
       <CardContent className="p-0">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div
+          className={cn(
+            'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
+            desktopOverride && 'grid-cols-3'
+          )}
+        >
           {days.map(({ date, items }) => {
             const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' });
             const overflow = Math.max(items.length - 4, 0);
@@ -459,6 +555,7 @@ function KidsGrid({
   onToggle: (templateId: string) => Promise<void> | void;
   visitMode: boolean;
 }) {
+  const desktopOverride = useDesktopOverrideValue();
   const todayKey = getFamilyDateKey();
 
   if (visitMode) {
@@ -473,7 +570,12 @@ function KidsGrid({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div
+      className={cn(
+        'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3',
+        desktopOverride && 'grid-cols-3'
+      )}
+    >
       {people.map((kid) => {
         const kidTemplates = templates.filter((t) => t.personId === kid.id && t.isActive);
         const completedIds = checks
@@ -531,6 +633,7 @@ function KidsGrid({
 }
 
 function RightColumn({ data, loading }: { data: any; loading: boolean }) {
+  const desktopOverride = useDesktopOverrideValue();
   const replenish = useMemo(() => {
     if (!data) return [];
     const urgentFirst = [...data.replenishItems].sort((a, b) =>
@@ -547,7 +650,12 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
   };
 
   return (
-    <div className="flex flex-col gap-3 lg:sticky lg:top-5">
+    <div
+      className={cn(
+        'flex flex-col gap-3 lg:sticky lg:top-5',
+        desktopOverride && 'sticky top-5'
+      )}
+    >
       <Card className="bg-card">
         <CardHeader>
           <div className="flex items-center justify-between">
