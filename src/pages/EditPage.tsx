@@ -438,7 +438,7 @@ function PeopleAdmin({
                 >
                   + Ordem
                 </Button>
-                <AlertDialog open={deleteConfirm === person.id} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+                <AlertDialog open={deleteConfirm === person.id} onOpenChange={(open: boolean) => !open && setDeleteConfirm(null)}>
                   <AlertDialogTrigger asChild>
                     <Button
                       size="sm"
