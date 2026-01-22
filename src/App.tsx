@@ -114,7 +114,7 @@ function PanelPage() {
 
         <div className="grid flex-1 grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
           <div className="flex flex-col gap-4">
-            <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 rounded-3xl border bg-white/70 px-4 sm:px-6 py-4 backdrop-blur">
+            <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 rounded-lg border bg-card px-4 sm:px-6 py-4">
               <div className="space-y-1">
                 <p className="text-xs uppercase text-muted-foreground tracking-[0.2em]">
                   Família
@@ -128,13 +128,13 @@ function PanelPage() {
             </header>
 
             {focus ? (
-              <Card className="border-dashed bg-white/70">
+              <Card className="border-dashed bg-card">
                 <CardHeader className="flex flex-row items-center justify-between gap-3">
                   <div>
                     <p className="text-xs uppercase text-muted-foreground tracking-wide">
                       Versículo / Foco da semana
                     </p>
-                    <CardTitle className="text-lg font-semibold leading-snug line-clamp-2">
+                    <CardTitle className="text-lg font-medium leading-snug line-clamp-2">
                       {focus.text}
                     </CardTitle>
                     {focus.reference ? (
@@ -143,7 +143,7 @@ function PanelPage() {
                       </CardDescription>
                     ) : null}
                   </div>
-                  <Badge className="shrink-0 bg-primary/10 text-primary">
+                  <Badge variant="muted" className="shrink-0">
                     <Sparkles className="mr-1 h-4 w-4" />
                     Sempre visível
                   </Badge>
@@ -232,7 +232,7 @@ function Sidebar({
   ];
 
   return (
-    <aside className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white/95 backdrop-blur lg:static lg:w-20 lg:rounded-3xl lg:border lg:border-t lg:shadow-sm">
+    <aside className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card lg:static lg:w-20 lg:rounded-lg lg:border lg:border-t">
       <div className="flex justify-around px-4 py-2 lg:flex-col lg:items-center lg:gap-2 lg:px-3 lg:py-4">
         {items.map((item) => (
           <Tooltip key={item.key}>
@@ -243,8 +243,7 @@ function Sidebar({
                 aria-pressed={active === item.key}
                 onClick={() => onChange(item.key)}
                 className={cn(
-                  'h-14 w-14 rounded-2xl lg:h-12 lg:w-12',
-                  active === item.key ? 'shadow-lg shadow-primary/10' : 'hover:bg-muted',
+                  'h-14 w-14 rounded-lg lg:h-12 lg:w-12',
                   'active:scale-95 transition-transform tap-highlight-transparent'
                 )}
               >
@@ -263,7 +262,7 @@ function Sidebar({
           <Button
             variant="ghost"
             size="icon"
-            className="h-14 w-14 rounded-2xl lg:h-12 lg:w-12 active:scale-95 transition-transform"
+            className="h-14 w-14 rounded-lg lg:h-12 lg:w-12 active:scale-95 transition-transform"
             onClick={onOpenQr}
           >
             <QrCode className="h-5 w-5" />
@@ -272,8 +271,8 @@ function Sidebar({
         <TooltipContent side="top" className="lg:side-right">Editar via QR</TooltipContent>
       </Tooltip>
 
-      <div className="flex items-center gap-2 rounded-2xl bg-muted/50 p-2 lg:mt-auto lg:flex-col lg:p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground lg:text-[11px]">
+      <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 lg:mt-auto lg:flex-col lg:p-3">
+        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground lg:text-[11px]">
           Visitas
         </p>
         <Switch checked={visitMode} onCheckedChange={onToggleVisit} />
@@ -304,7 +303,7 @@ function CalendarGrid({
             return (
               <div
                 key={formatISO(date)}
-                className="rounded-2xl border border-border/60 bg-white/70 p-4 shadow-sm"
+                className="rounded-lg border bg-card p-4"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -320,7 +319,7 @@ function CalendarGrid({
                   {loading ? (
                     <>
                       {[1, 2, 3].map((i) => (
-                        <div key={i} className="flex items-start gap-3 rounded-xl border border-border/60 p-3">
+                        <div key={i} className="flex items-start gap-3 rounded-lg border p-3">
                           <Skeleton className="mt-1 h-3 w-3 rounded-full" />
                           <div className="flex-1 space-y-2">
                             <Skeleton className="h-4 w-3/4" />
@@ -338,15 +337,15 @@ function CalendarGrid({
                       return (
                         <div
                           key={item.id}
-                          className="flex items-start gap-3 rounded-xl border border-border/60 bg-gradient-to-r from-muted/60 to-white/80 p-3 shadow-[0_10px_30px_-20px_rgba(0,0,0,0.4)]"
+                          className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3"
                         >
                           <span className="mt-1 h-3 w-3 rounded-full" style={{ backgroundColor: dotColor }} />
                           <div className="space-y-1">
-                            <p className="text-sm font-semibold leading-snug">{item.title}</p>
+                            <p className="text-sm font-medium leading-snug">{item.title}</p>
                             <p className="text-xs text-muted-foreground">
                               {item.timeText}{' '}
                               {person ? (
-                                <span className="text-[11px] font-semibold text-foreground/80">• {person.name}</span>
+                                <span className="text-[11px] font-medium text-foreground/80">• {person.name}</span>
                               ) : null}
                             </p>
                           </div>
@@ -355,7 +354,7 @@ function CalendarGrid({
                     })
                   )}
                   {overflow > 0 ? (
-                    <p className="text-xs font-semibold text-muted-foreground">+{overflow} restantes</p>
+                    <p className="text-xs font-medium text-muted-foreground">+{overflow} restantes</p>
                   ) : null}
                 </div>
               </div>
@@ -384,7 +383,7 @@ function KidsGrid({
 
   if (visitMode) {
     return (
-      <Card className="border-dashed bg-white/60">
+      <Card className="border-dashed bg-card">
         <CardHeader>
           <CardTitle>Modo visitas</CardTitle>
           <CardDescription>Rotinas e nomes sensíveis ocultos. Desative para marcar atividades das crianças.</CardDescription>
@@ -402,7 +401,7 @@ function KidsGrid({
           .map((c: any) => c.templateId);
 
         return (
-          <Card key={kid.id} className="border border-border/60 bg-white/80">
+          <Card key={kid.id} className="border bg-card">
             <CardHeader className="flex flex-row items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="h-3 w-3 rounded-full" style={{ backgroundColor: kid.color }} aria-hidden />
@@ -424,10 +423,10 @@ function KidsGrid({
                       type="button"
                       onClick={() => onToggle(routine.id)}
                       className={cn(
-                        'flex items-center justify-between rounded-2xl border px-4 py-3 text-left text-base font-semibold transition',
+                        'flex items-center justify-between rounded-lg border px-4 py-3 text-left text-base font-medium transition',
                         done
-                          ? 'border-emerald-500/50 bg-emerald-50 text-emerald-800 shadow-[0_15px_40px_-25px_rgba(16,185,129,0.9)]'
-                          : 'border-border bg-white hover:border-primary/50 hover:shadow-md'
+                          ? 'border-emerald-500/50 bg-emerald-50 text-emerald-800'
+                          : 'border-border bg-card hover:border-primary/50 hover:bg-muted/30'
                       )}
                     >
                       <span className="pr-3">{routine.title}</span>
@@ -469,7 +468,7 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
 
   return (
     <div className="flex flex-col gap-3 lg:sticky lg:top-5">
-      <Card className="bg-white/80">
+      <Card className="bg-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Reposição</CardTitle>
@@ -481,7 +480,7 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
           {loading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center justify-between rounded-xl border px-3 py-2">
+                <div key={i} className="flex items-center justify-between rounded-lg border px-3 py-2">
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-6 w-16 rounded-full" />
                 </div>
@@ -495,14 +494,14 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
                 <div
                   key={item.id}
                   className={cn(
-                    'flex items-center justify-between rounded-xl border px-3 py-2',
+                    'flex items-center justify-between rounded-lg border px-3 py-2',
                     item.urgency === 'now'
                       ? 'border-destructive/40 bg-destructive/5 text-destructive'
                       : 'border-amber-400/60 bg-amber-50 text-amber-700'
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold">{item.title}</span>
+                    <span className="text-sm font-medium">{item.title}</span>
                   </div>
                   <Badge variant="outline" className="border-current">
                     {item.urgency === 'now' ? 'Agora' : 'Em breve'}
@@ -517,7 +516,7 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
         </CardContent>
       </Card>
 
-      <Card className="bg-white/80">
+      <Card className="bg-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Homeschool da semana</CardTitle>
@@ -536,7 +535,7 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
               <div key={kidId} className="mb-4 last:mb-0">
                 <div className="mb-2 flex items-center gap-2">
                   <span className="h-3 w-3 rounded-full" style={{ backgroundColor: homeschoolColors[kidId] }} />
-                  <p className="text-sm font-semibold">{name}</p>
+                  <p className="text-sm font-medium">{name}</p>
                 </div>
                 {loading ? (
                   <ul className="space-y-1">
@@ -558,7 +557,7 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
                       </li>
                     ))}
                     {overflow > 0 ? (
-                      <li className="text-xs font-semibold text-muted-foreground">+{overflow} itens adicionais</li>
+                      <li className="text-xs font-medium text-muted-foreground">+{overflow} itens adicionais</li>
                     ) : null}
                   </ul>
                 )}
@@ -594,7 +593,7 @@ function QrModal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: b
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center gap-3">
-          <div className="rounded-3xl border bg-white p-4 shadow-inner">
+          <div className="rounded-lg border bg-card p-4">
             <QRCodeCanvas value={editLink} size={qrSize} className="w-full h-auto max-w-[280px]" />
           </div>
           <a
