@@ -6,45 +6,45 @@
 
 @layer base {
   :root {
-    /* Backgrounds - Clean whites e grays */
-    --background: 0 0% 100%;           /* #FFFFFF - Branco puro */
-    --foreground: 240 10% 10%;         /* #16181D - Quase preto */
+    /* Backgrounds - Off-white para reduzir contraste */
+    --background: 40 20% 97%;          /* #F9F8F6 - Off-white quente */
+    --foreground: 240 10% 15%;         /* #222328 - Cinza escuro */
 
-    /* Cards e superfícies */
-    --card: 0 0% 100%;                 /* #FFFFFF */
-    --card-foreground: 240 10% 10%;
+    /* Cards e superfícies - Levemente mais claro que o background */
+    --card: 0 0% 100%;                 /* #FFFFFF - Branco puro para contraste */
+    --card-foreground: 240 10% 15%;
 
     /* Muted (secundário, menos importante) */
-    --muted: 240 5% 96%;               /* #F5F5F6 - Cinza muito claro */
-    --muted-foreground: 240 4% 46%;    /* #72747B - Cinza médio */
+    --muted: 240 5% 94%;               /* #EFEFEF - Cinza claro */
+    --muted-foreground: 240 3% 50%;    /* #7E7E82 - Cinza médio */
 
-    /* Primary - Azul profissional mas não chamativo */
-    --primary: 217 91% 45%;            /* #0369A1 - Azul sóbrio */
+    /* Primary - Azul suave, não vibrante */
+    --primary: 210 60% 50%;            /* #3385CC - Azul equilibrado */
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Verde suave para confirmações */
-    --secondary: 142 71% 35%;          /* #15803D - Verde oliva */
+    /* Secondary - Verde natural */
+    --secondary: 150 45% 45%;          /* #3F9C6D - Verde balanceado */
     --secondary-foreground: 0 0% 100%;
 
-    /* Accent - Apenas para highlights pontuais */
-    --accent: 38 92% 45%;              /* #D97706 - Laranja terroso */
+    /* Accent - Laranja suave */
+    --accent: 30 75% 55%;              /* #E89A4A - Laranja suave */
     --accent-foreground: 0 0% 100%;
 
-    /* Destructive - Vermelho discreto */
-    --destructive: 0 72% 51%;          /* #DC2626 - Vermelho sóbrio */
+    /* Destructive - Vermelho suave */
+    --destructive: 0 65% 55%;          /* #D95555 - Vermelho suave */
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders e inputs - Bem sutis */
-    --border: 240 6% 90%;              /* #E4E4E7 - Cinza claro */
-    --input: 240 6% 90%;
-    --ring: 217 91% 45%;               /* Mesmo que primary */
+    /* Borders e inputs - Mais visíveis */
+    --border: 240 8% 85%;              /* #D4D4D8 - Cinza médio-claro */
+    --input: 240 8% 85%;
+    --ring: 210 60% 50%;               /* Mesmo que primary */
 
     /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 10%;
+    --popover-foreground: 240 10% 15%;
 
-    /* Border radius - Menos arredondado, mais profissional */
-    --radius: 8px;
+    /* Border radius - Moderado */
+    --radius: 10px;
   }
 
   * {
@@ -56,12 +56,6 @@
     font-family: 'Space Grotesk', 'Satoshi Variable', system-ui, -apple-system,
       BlinkMacSystemFont, 'Segoe UI', sans-serif;
     min-height: 100vh;
-    /* Background limpo - só uma textura bem sutil */
-    background:
-      linear-gradient(0deg, transparent 24%, rgba(0, 0, 0, 0.015) 25%, rgba(0, 0, 0, 0.015) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, 0.015) 75%, rgba(0, 0, 0, 0.015) 76%, transparent 77%, transparent),
-      linear-gradient(90deg, transparent 24%, rgba(0, 0, 0, 0.015) 25%, rgba(0, 0, 0, 0.015) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, 0.015) 75%, rgba(0, 0, 0, 0.015) 76%, transparent 77%, transparent),
-      #FFFFFF;
-    background-size: 50px 50px;
   }
 }
 
