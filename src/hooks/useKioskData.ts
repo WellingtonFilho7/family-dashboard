@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { addDays, isSameDay, startOfWeek } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -57,6 +57,8 @@ export function useKioskData(
   const routineChecksRef = useRef<KidRoutineCheck[]>([]);
   const pendingRoutineKeysRef = useRef(new Set<string>());
   const [error, setError] = useState<string | null>(null);
+  const [dateKey, setDateKey] = useState(() => getFamilyDateKey());
+  const lastFetchRef = useRef(Date.now());
   const isProd = import.meta.env.PROD;
   const isMock = !isProd && (!supabase || !hasSupabaseEnv);
   const hasConfig = Boolean(supabase) && hasSupabaseEnv;
@@ -110,6 +112,7 @@ export function useKioskData(
           if (!active) return;
           setRawData(data);
           setRoutineChecks(data.kidRoutineChecks);
+          lastFetchRef.current = Date.now();
         } else if (isMock) {
           await new Promise((resolve) => setTimeout(resolve, 80));
           if (!active) return;
@@ -150,15 +153,24 @@ export function useKioskData(
       active = false;
       controller.abort();
     };
-  }, [hasConfig, isMock, isProd, requireAuth, sessionToken]);
+  }, [hasConfig, isMock, isProd, requireAuth, sessionToken, dateKey]);
 
   useEffect(() => {
     routineChecksRef.current = routineChecks;
   }, [routineChecks]);
 
+  // Midnight rollover — recalculates week and triggers refetch via dateKey dep
+  useEffect(() => {
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const msUntilMidnight = tomorrow.getTime() - now.getTime() + 1_000;
+    const id = setTimeout(() => setDateKey(getFamilyDateKey()), msUntilMidnight);
+    return () => clearTimeout(id);
+  }, [dateKey]);
+
   const weekStart = useMemo(
     () => startOfWeek(getFamilyDate(), { weekStartsOn: 0 }),
-    []
+    [dateKey]
   );
   const weekDays = useMemo(
     () => Array.from({ length: 7 }).map((_, idx) => addDays(weekStart, idx)),
@@ -269,6 +281,37 @@ export function useKioskData(
       pendingRoutineKeysRef.current.delete(toggleKey);
     }
   };
+
+  // Silent background refresh (no loading spinner, no error toasts)
+  const silentRefresh = useCallback(async () => {
+    if (!supabase || !hasConfig) return;
+    try {
+      const freshData = await fetchAll();
+      setRawData(freshData);
+      setRoutineChecks(freshData.kidRoutineChecks);
+      lastFetchRef.current = Date.now();
+    } catch (err) {
+      console.error('[auto-refresh]', err);
+    }
+  }, [hasConfig]);
+
+  // Auto-refresh: 5-min interval + refetch on tab focus if stale
+  useEffect(() => {
+    if (!hasConfig || requireAuth) return;
+    const INTERVAL = 5 * 60 * 1_000;
+    const id = setInterval(silentRefresh, INTERVAL);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        const elapsed = Date.now() - lastFetchRef.current;
+        if (elapsed > 60_000) silentRefresh();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [hasConfig, requireAuth, silentRefresh]);
 
   return {
     data,

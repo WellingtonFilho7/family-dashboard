@@ -45,6 +45,7 @@ import { getFamilyDateKey } from '@/lib/date-utils';
 import { getVisibleWithOverflow } from '@/lib/list-utils';
 import { cn } from '@/lib/utils';
 import type { CalendarItem, KidRoutineCheck, KidRoutineTemplate, Person } from '@/lib/types';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import EditPage from '@/pages/EditPage';
 
 function App() {
@@ -331,21 +332,25 @@ function PanelPage() {
             </div>
 
             <div className="flex-1">
-              {viewMode === 'calendar' ? (
-                <CalendarGrid loading={loading} days={calendarByDay} people={data?.people ?? []} />
-              ) : (
-                <KidsGrid
-                  people={activeKids}
-                  templates={data?.kidRoutineTemplates ?? []}
-                  checks={routineChecks}
-                  onToggle={handleToggleRoutine}
-                  visitMode={visitMode}
-                />
-              )}
+              <ErrorBoundary sectionName="Conteúdo principal">
+                {viewMode === 'calendar' ? (
+                  <CalendarGrid loading={loading} days={calendarByDay} people={data?.people ?? []} />
+                ) : (
+                  <KidsGrid
+                    people={activeKids}
+                    templates={data?.kidRoutineTemplates ?? []}
+                    checks={routineChecks}
+                    onToggle={handleToggleRoutine}
+                    visitMode={visitMode}
+                  />
+                )}
+              </ErrorBoundary>
             </div>
           </div>
 
-          <RightColumn loading={loading} data={data} />
+          <ErrorBoundary sectionName="Coluna lateral">
+            <RightColumn loading={loading} data={data} />
+          </ErrorBoundary>
         </div>
       </div>
 
@@ -641,12 +646,10 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
     return urgentFirst.filter((item) => item.isActive);
   }, [data]);
 
-  const homeschoolOrder = ['benjamin', 'jose', 'judah'];
-  const homeschoolColors: Record<string, string> = {
-    benjamin: '#2563EB',
-    jose: '#16A34A',
-    judah: '#DC2626',
-  };
+  const kids = useMemo(
+    () => (data?.people ?? []).filter((p: Person) => p.type === 'kid'),
+    [data?.people]
+  );
 
   return (
     <div
@@ -707,22 +710,21 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Homeschool da semana</CardTitle>
-            <Badge variant="outline">Ordem fixa</Badge>
+            <Badge variant="muted">{kids.length} crianças</Badge>
           </div>
           <CardDescription>Até 6 tópicos por criança; demais aparecem em +N.</CardDescription>
         </CardHeader>
         <CardContent>
-          {homeschoolOrder.map((kidId) => {
-            const note = data?.homeschoolNotes.find((n: any) => n.kidPersonId === kidId);
+          {kids.map((kid: Person) => {
+            const note = data?.homeschoolNotes.find((n: any) => n.kidPersonId === kid.id);
             const topics = note?.notes ?? [];
             const overflow = Math.max(topics.length - 6, 0);
-            const name = data?.people.find((p: Person) => p.id === kidId)?.name || kidId.charAt(0).toUpperCase() + kidId.slice(1);
 
             return (
-              <div key={kidId} className="mb-4 last:mb-0">
+              <div key={kid.id} className="mb-4 last:mb-0">
                 <div className="mb-2 flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: homeschoolColors[kidId] }} />
-                  <p className="text-sm font-medium">{name}</p>
+                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: kid.color }} />
+                  <p className="text-sm font-medium">{kid.name}</p>
                 </div>
                 {loading ? (
                   <ul className="space-y-1">

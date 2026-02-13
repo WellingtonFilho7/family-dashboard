@@ -1,5 +1,6 @@
 export const getDesktopOverrideFromSearch = (search: string) => {
   const params = new URLSearchParams(search);
+  if (params.get('mode') === 'tv') return true;
   if (!params.has('desktop')) return null;
   return params.get('desktop') === '1';
 };
