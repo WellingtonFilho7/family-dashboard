@@ -61,8 +61,8 @@ module.exports = {
         'accordion-up': 'accordion-up 0.2s ease-out',
       },
       fontFamily: {
-        sans: ['"Satoshi Variable"', ...fontFamily.sans],
-        display: ['"Satoshi Variable"', ...fontFamily.sans],
+        sans: ['"Space Grotesk"', ...fontFamily.sans],
+        display: ['"Space Grotesk"', ...fontFamily.sans],
       },
     },
   },
