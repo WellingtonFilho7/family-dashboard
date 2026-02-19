@@ -16,7 +16,7 @@
 
     /* Muted (secundário, menos importante) */
     --muted: 240 5% 94%;               /* #EFEFEF - Cinza claro */
-    --muted-foreground: 240 3% 50%;    /* #7E7E82 - Cinza médio */
+    --muted-foreground: 240 5% 40%;    /* #616166 - Cinza mais forte p/ legibilidade */
 
     /* Primary - Azul suave, não vibrante */
     --primary: 210 60% 50%;            /* #3385CC - Azul equilibrado */

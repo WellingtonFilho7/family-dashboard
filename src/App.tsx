@@ -253,11 +253,11 @@ function PanelPage() {
                 <p className="text-xs uppercase text-muted-foreground tracking-[0.2em]">
                   Família
                 </p>
-                <h1 className="text-2xl sm:text-3xl font-bold leading-tight">Painel semanal</h1>
+                <h1 className="text-2xl sm:text-3xl xl:text-4xl font-bold leading-tight">Painel semanal</h1>
               </div>
               <div className="text-left sm:text-right">
-                <p className="text-sm lg:text-base capitalize text-muted-foreground">{humanDate}</p>
-                <p className="text-3xl sm:text-4xl lg:text-5xl font-semibold tabular-nums">{format(clock, 'HH:mm')}</p>
+                <p className="text-sm lg:text-base xl:text-lg capitalize text-muted-foreground">{humanDate}</p>
+                <p className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-semibold tabular-nums">{format(clock, 'HH:mm')}</p>
               </div>
             </header>
 
@@ -268,7 +268,7 @@ function PanelPage() {
                     <p className="text-xs uppercase text-muted-foreground tracking-wide">
                       Versículo / Foco da semana
                     </p>
-                    <CardTitle className="text-lg lg:text-xl font-medium leading-snug line-clamp-2">
+                    <CardTitle className="text-lg lg:text-xl xl:text-2xl font-medium leading-snug line-clamp-2">
                       {focus.text}
                     </CardTitle>
                     {focus.reference ? (
@@ -286,7 +286,7 @@ function PanelPage() {
             ) : null}
 
             {error && isProd && (
-              <Card className="border-destructive/40 bg-destructive/5">
+              <Card className="border-destructive/60 bg-destructive/10">
                 <CardHeader>
                   <CardTitle className="text-destructive">Aviso</CardTitle>
                   <CardDescription className="text-destructive">{error}</CardDescription>
@@ -423,7 +423,7 @@ function CalendarGrid({
         <div
           className={cn(
             'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
-            desktopOverride && 'grid-cols-3'
+            desktopOverride && 'grid-cols-3 xl:grid-cols-4'
           )}
         >
           {days.map(({ date, items }) => {
@@ -436,8 +436,8 @@ function CalendarGrid({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-xs lg:text-sm uppercase tracking-wide text-muted-foreground">{dayName}</p>
-                    <p className="text-2xl lg:text-3xl font-semibold leading-tight">{format(date, 'dd')}</p>
+                    <p className="text-xs lg:text-sm xl:text-base uppercase tracking-wide text-muted-foreground">{dayName}</p>
+                    <p className="text-2xl lg:text-3xl xl:text-4xl font-semibold leading-tight">{format(date, 'dd')}</p>
                   </div>
                   <Badge variant="muted">
                     {items.length} evento{items.length === 1 ? '' : 's'}
@@ -458,7 +458,7 @@ function CalendarGrid({
                       ))}
                     </>
                   ) : items.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nada por aqui</p>
+                    <p className="text-sm lg:text-base text-muted-foreground">Nada por aqui</p>
                   ) : (
                     items.slice(0, 4).map((item) => {
                       const person = personById.get(item.personId);
@@ -470,11 +470,11 @@ function CalendarGrid({
                         >
                           <span className="mt-1 h-3 w-3 rounded-full" style={{ backgroundColor: dotColor }} />
                           <div className="space-y-1">
-                            <p className="text-sm lg:text-base font-medium leading-snug">{item.title}</p>
-                            <p className="text-xs lg:text-sm text-muted-foreground">
+                            <p className="text-sm lg:text-base xl:text-lg font-medium leading-snug">{item.title}</p>
+                            <p className="text-xs lg:text-sm xl:text-base text-muted-foreground">
                               {item.timeText}{' '}
                               {person ? (
-                                <span className="text-xs lg:text-sm font-medium text-foreground/80">• {person.name}</span>
+                                <span className="text-xs lg:text-sm xl:text-base font-medium text-foreground/80">• {person.name}</span>
                               ) : null}
                             </p>
                           </div>
@@ -522,7 +522,7 @@ function KidsGrid({
   }
 
   return (
-    <div className={cn('grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3')}>
+    <div className={cn('grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] xl:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3')}>
       {people.map((kid) => {
         const kidTemplates = templates.filter((t) => t.personId === kid.id && t.isActive);
         const completedIds = checks
@@ -543,7 +543,7 @@ function KidsGrid({
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
               {kidTemplates.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Sem rotinas ativas</p>
+                <p className="text-sm lg:text-base text-muted-foreground">Sem rotinas ativas</p>
               ) : (
                 visibleRoutines.map((routine) => {
                   const done = completedIds.includes(routine.id);
@@ -553,20 +553,20 @@ function KidsGrid({
                       type="button"
                       onClick={() => onToggle(routine.id)}
                       className={cn(
-                        'flex items-center justify-between rounded-lg border px-4 py-3 lg:px-5 lg:py-4 text-left text-base lg:text-lg font-medium transition',
+                        'flex items-center justify-between rounded-lg border px-4 py-3 lg:px-5 lg:py-4 text-left text-base lg:text-lg xl:text-xl font-medium transition-all active:scale-[0.98]',
                         done
-                          ? 'border-emerald-500/50 bg-emerald-50 text-emerald-800'
-                          : 'border-border bg-card hover:border-primary/50 hover:bg-muted/30'
+                          ? 'border-emerald-500/50 bg-emerald-50 text-emerald-800 active:bg-emerald-100'
+                          : 'border-border bg-card hover:border-primary/50 hover:bg-muted/30 active:bg-muted/50'
                       )}
                     >
                       <span className="pr-3">{routine.title}</span>
                       <span
                         className={cn(
-                          'grid h-10 w-10 lg:h-12 lg:w-12 shrink-0 place-items-center rounded-full border-2',
+                          'grid h-10 w-10 lg:h-12 lg:w-12 xl:h-14 xl:w-14 shrink-0 place-items-center rounded-full border-2',
                           done ? 'border-emerald-500 bg-white text-emerald-600' : 'border-border bg-muted text-muted-foreground'
                         )}
                       >
-                        <Check className="h-5 w-5 lg:h-6 lg:w-6" />
+                        <Check className="h-5 w-5 lg:h-6 lg:w-6 xl:h-7 xl:w-7" />
                       </span>
                     </button>
                   );
@@ -624,21 +624,21 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
               ))}
             </div>
           ) : replenish.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nada pendente.</p>
+            <p className="text-sm lg:text-base text-muted-foreground">Nada pendente.</p>
           ) : (
             <div className="space-y-2">
               {replenish.slice(0, 8).map((item) => (
                 <div
                   key={item.id}
                   className={cn(
-                    'flex items-center justify-between rounded-lg border px-3 py-2',
+                    'flex items-center justify-between rounded-lg border px-4 py-3',
                     item.urgency === 'now'
-                      ? 'border-destructive/40 bg-destructive/5 text-destructive'
+                      ? 'border-destructive/60 bg-destructive/10 text-destructive'
                       : 'border-amber-400/60 bg-amber-50 text-amber-700'
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-sm lg:text-base font-medium">{item.title}</span>
+                    <span className="text-sm lg:text-base xl:text-lg font-medium">{item.title}</span>
                   </div>
                   <Badge variant="outline" className="border-current">
                     {item.urgency === 'now' ? 'Agora' : 'Em breve'}
@@ -671,7 +671,7 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
               <div key={kid.id} className="mb-4 last:mb-0">
                 <div className="mb-2 flex items-center gap-2">
                   <span className="h-3 w-3 rounded-full" style={{ backgroundColor: kid.color }} />
-                  <p className="text-sm lg:text-base font-medium">{kid.name}</p>
+                  <p className="text-sm lg:text-base xl:text-lg font-medium">{kid.name}</p>
                 </div>
                 {loading ? (
                   <ul className="space-y-1">
@@ -683,9 +683,9 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
                     ))}
                   </ul>
                 ) : topics.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Sem tópicos</p>
+                  <p className="text-sm lg:text-base text-muted-foreground">Sem tópicos</p>
                 ) : (
-                  <ul className="space-y-1 text-sm text-foreground">
+                  <ul className="space-y-1 text-sm lg:text-base text-foreground">
                     {topics.slice(0, 6).map((topic: string, idx: number) => (
                       <li key={idx} className="flex items-start gap-2">
                         <span className="mt-1 h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
