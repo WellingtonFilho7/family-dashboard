@@ -46,6 +46,7 @@ const hasSupabaseAnon = Boolean(supabaseAnonEnv);
 const hasSupabaseEnv = hasSupabaseUrl && hasSupabaseAnon;
 const debugSupabase =
   import.meta.env.DEV || import.meta.env.VITE_DEBUG_SUPABASE === 'true';
+const OFFLINE_CACHE_KEY = 'family-dashboard:offline-cache';
 
 export function useKioskData(
   visitMode: boolean,
@@ -57,6 +58,7 @@ export function useKioskData(
   const routineChecksRef = useRef<KidRoutineCheck[]>([]);
   const pendingRoutineKeysRef = useRef(new Set<string>());
   const [error, setError] = useState<string | null>(null);
+  const [isStale, setIsStale] = useState(false);
   const [dateKey, setDateKey] = useState(() => getFamilyDateKey());
   const lastFetchRef = useRef(Date.now());
   const isProd = import.meta.env.PROD;
@@ -112,7 +114,9 @@ export function useKioskData(
           if (!active) return;
           setRawData(data);
           setRoutineChecks(data.kidRoutineChecks);
+          setIsStale(false);
           lastFetchRef.current = Date.now();
+          try { localStorage.setItem(OFFLINE_CACHE_KEY, JSON.stringify(data)); } catch { /* quota */ }
         } else if (isMock) {
           await new Promise((resolve) => setTimeout(resolve, 80));
           if (!active) return;
@@ -127,9 +131,22 @@ export function useKioskData(
           setRawData(null);
           setRoutineChecks([]);
         }
-      } catch (error) {
+      } catch (err) {
         if (!active) return;
-        console.error(error);
+        console.error(err);
+        // Offline fallback: try to load from cache
+        try {
+          const cached = localStorage.getItem(OFFLINE_CACHE_KEY);
+          if (cached) {
+            const data = JSON.parse(cached) as FamilyData;
+            setRawData(data);
+            setRoutineChecks(data.kidRoutineChecks);
+            setIsStale(true);
+            setError(null);
+            toast.info('Usando dados em cache (offline)');
+            return;
+          }
+        } catch { /* parse error */ }
         setError('Erro ao carregar dados do painel');
         toast.error('Erro ao carregar dados do painel');
       } finally {
@@ -289,7 +306,9 @@ export function useKioskData(
       const freshData = await fetchAll();
       setRawData(freshData);
       setRoutineChecks(freshData.kidRoutineChecks);
+      setIsStale(false);
       lastFetchRef.current = Date.now();
+      try { localStorage.setItem(OFFLINE_CACHE_KEY, JSON.stringify(freshData)); } catch { /* quota */ }
     } catch (err) {
       console.error('[auto-refresh]', err);
     }
@@ -317,6 +336,7 @@ export function useKioskData(
     data,
     loading,
     error,
+    isStale,
     isMock,
     isProd,
     hasConfig,

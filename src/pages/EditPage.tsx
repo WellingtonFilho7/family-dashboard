@@ -1,4 +1,4 @@
-import { RefreshCcw } from 'lucide-react';
+import { Moon, RefreshCcw, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components';
+import { useDarkMode } from '@/hooks/useDarkMode';
 import { useKioskData } from '@/hooks/useKioskData';
 import { supabase } from '@/lib/supabase';
 
@@ -28,6 +29,7 @@ type AdminCategory = 'people' | 'agenda' | 'routines' | 'replenish' | 'content' 
 
 function EditPage() {
   const navigate = useNavigate();
+  const [dark, toggleDark] = useDarkMode();
   const [session, setSession] = useState<Session | null>(null);
   const [category, setCategory] = useState<AdminCategory>('people');
 
@@ -75,7 +77,7 @@ function EditPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-6">
+    <div className="min-h-screen bg-background px-4 py-6">
       <div className="mx-auto flex max-w-5xl flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -83,6 +85,9 @@ function EditPage() {
             <h1 className="text-2xl font-bold">Family Dashboard</h1>
           </div>
           <div className="flex gap-2">
+            <Button variant="ghost" size="icon" onClick={toggleDark} className="h-9 w-9">
+              {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => navigate('/painel')}>
               Voltar ao painel
             </Button>

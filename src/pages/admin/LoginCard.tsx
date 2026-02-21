@@ -64,7 +64,7 @@ export function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
   };
 
   return (
-    <Card className="w-full max-w-md border border-border/60 bg-white/90">
+    <Card className="w-full max-w-md border border-border/60 bg-card/90">
       <CardHeader>
         <CardTitle>Área administrativa</CardTitle>
         <CardDescription>Login via Supabase Auth (OTP por e-mail).</CardDescription>

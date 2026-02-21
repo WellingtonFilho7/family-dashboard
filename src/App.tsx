@@ -2,9 +2,12 @@ import {
   Check,
   Clock3,
   Edit3,
+  Moon,
   QrCode,
   RefreshCcw,
   Sparkles,
+  Sun,
+  WifiOff,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -43,6 +46,7 @@ import { getVisibleWithOverflow } from '@/lib/list-utils';
 import { cn } from '@/lib/utils';
 import type { CalendarItem, KidRoutineCheck, KidRoutineTemplate, Person } from '@/lib/types';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { useDarkMode } from '@/hooks/useDarkMode';
 import EditPage from '@/pages/EditPage';
 
 function App() {
@@ -190,7 +194,7 @@ function PanelPage() {
   const [visitMode, setVisitMode] = useState(false);
   const [clock, setClock] = useState(new Date());
   const [qrOpen, setQrOpen] = useState(false);
-  const { data, loading, calendarByDay, weekDays, routineChecks, toggleRoutine, isMock, isProd, error } =
+  const { data, loading, calendarByDay, weekDays, routineChecks, toggleRoutine, isMock, isProd, isStale, error } =
     useKioskData(visitMode);
 
   useEffect(() => {
@@ -294,11 +298,21 @@ function PanelPage() {
               </Card>
             )}
             {isMock && (
-              <Card className="border-amber-200 bg-amber-50">
+              <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
                 <CardHeader>
-                  <CardTitle className="text-amber-700">Modo mock (dev)</CardTitle>
+                  <CardTitle className="text-amber-700 dark:text-amber-400">Modo mock (dev)</CardTitle>
                   <CardDescription>
                     Supabase não configurado em desenvolvimento. Dados não são reais.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            )}
+            {isStale && (
+              <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
+                <CardHeader className="flex flex-row items-center gap-2 py-3">
+                  <WifiOff className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <CardDescription className="text-amber-700 dark:text-amber-400">
+                    Dados em cache — sem conexão com o servidor.
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -352,6 +366,7 @@ function Sidebar({
   onOpenQr: () => void;
 }) {
   const desktopOverride = useDesktopOverrideValue();
+  const [dark, toggleDark] = useDarkMode();
 
   return (
     <aside
@@ -381,6 +396,23 @@ function Sidebar({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top" className="lg:side-right">Editar via QR</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                'h-14 w-14 rounded-lg lg:h-12 lg:w-12 active:scale-95 transition-transform',
+                desktopOverride && 'h-12 w-12'
+              )}
+              onClick={toggleDark}
+            >
+              {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="lg:side-right">{dark ? 'Modo claro' : 'Modo escuro'}</TooltipContent>
         </Tooltip>
 
         <div
@@ -555,7 +587,7 @@ function KidsGrid({
                       className={cn(
                         'flex items-center justify-between rounded-lg border px-4 py-3 lg:px-5 lg:py-4 text-left text-base lg:text-lg xl:text-xl font-medium transition-all active:scale-[0.98]',
                         done
-                          ? 'border-emerald-500/50 bg-emerald-50 text-emerald-800 active:bg-emerald-100'
+                          ? 'border-emerald-500/50 bg-emerald-50 text-emerald-800 active:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:active:bg-emerald-900'
                           : 'border-border bg-card hover:border-primary/50 hover:bg-muted/30 active:bg-muted/50'
                       )}
                     >
@@ -634,7 +666,7 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
                     'flex items-center justify-between rounded-lg border px-4 py-3',
                     item.urgency === 'now'
                       ? 'border-destructive/60 bg-destructive/10 text-destructive'
-                      : 'border-amber-400/60 bg-amber-50 text-amber-700'
+                      : 'border-amber-400/60 bg-amber-50 text-amber-700 dark:border-amber-600/60 dark:bg-amber-950 dark:text-amber-400'
                   )}
                 >
                   <div className="flex items-center gap-2">

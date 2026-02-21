@@ -47,6 +47,28 @@
     --radius: 10px;
   }
 
+  .dark {
+    --background: 240 10% 8%;
+    --foreground: 0 0% 93%;
+    --card: 240 8% 12%;
+    --card-foreground: 0 0% 93%;
+    --muted: 240 5% 18%;
+    --muted-foreground: 240 5% 65%;
+    --primary: 210 60% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 150 45% 50%;
+    --secondary-foreground: 0 0% 100%;
+    --accent: 30 75% 60%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 65% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 5% 22%;
+    --input: 240 5% 22%;
+    --ring: 210 60% 55%;
+    --popover: 240 8% 12%;
+    --popover-foreground: 0 0% 93%;
+  }
+
   * {
     @apply border-border;
   }
@@ -67,4 +89,8 @@
 ::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.12);
   border-radius: 999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
 }
