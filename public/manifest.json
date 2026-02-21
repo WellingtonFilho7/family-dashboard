@@ -1,0 +1,16 @@
+{
+  "name": "Family Dashboard",
+  "short_name": "Painel",
+  "start_url": "/painel",
+  "display": "standalone",
+  "background_color": "#F9F8F6",
+  "theme_color": "#3385CC",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

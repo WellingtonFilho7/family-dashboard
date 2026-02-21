@@ -60,9 +60,6 @@ Silk sends mobile UA on 1080p+ TVs. Use `?desktop=1` or `?mode=tv` (both work, p
 
 | Issue | Status |
 |-------|--------|
-| Calendar + routines mutually exclusive | Open — Sprint 2 will unify |
-| Font sizes too small for 2-3m | Open — Sprint 2 |
-| Replenish capped at 4 items | Open — Sprint 2 |
 | No dark mode | Open — Sprint 4 |
 | No offline indicator | Open — Sprint 4 |
 
@@ -77,6 +74,15 @@ Silk sends mobile UA on 1080p+ TVs. Use `?desktop=1` or `?mode=tv` (both work, p
 | Font config conflict (Space Grotesk vs Satoshi) | Unified on Space Grotesk |
 | Dead `App.css` boilerplate | Deleted |
 
+## Resolved in Sprint 2
+
+| Issue | Fix |
+|-------|-----|
+| Calendar + routines mutually exclusive | Unified layout — both always visible, no tabs |
+| Font sizes too small for 2-3m | Bumped clock to 48px, events to 16px, routines to 18px on lg |
+| Replenish capped at 4 items | Raised to 8 |
+| Sidebar had unnecessary tab buttons | Simplified to QR + visit mode only |
+
 ---
 
 ## Target state (ideal kiosk)
@@ -88,12 +94,9 @@ Silk sends mobile UA on 1080p+ TVs. Use `?desktop=1` or `?mode=tv` (both work, p
 - Dark mode toggle for evening
 - Last-known data on network failure
 
-## Gap summary
+## Remaining gaps
 
 | Gap | Priority | Sprint |
 |-----|----------|--------|
-| Unified layout (no tabs) | High | 2 |
-| Font sizes for distance | High | 2 |
-| Replenish cap increase | Medium | 2 |
 | Dark mode | Medium | 4 |
 | Offline resilience | Medium | 4 |
