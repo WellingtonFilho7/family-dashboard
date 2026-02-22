@@ -231,135 +231,147 @@ function PanelPage() {
 
   return (
     <div className={cn(
-      'min-h-screen px-3 py-3 pb-24 md:px-4 md:pb-4 xl:h-screen xl:overflow-hidden xl:pb-3',
-      desktopOverride && 'h-screen overflow-hidden pb-3'
+      'min-h-screen px-3 py-3 pb-24 md:px-4 md:pb-4 xl:h-screen xl:overflow-hidden xl:p-4',
+      desktopOverride && 'h-screen overflow-hidden p-4 pb-4'
     )}>
-      <div
-        className={cn(
-          'flex flex-col gap-4 lg:flex-row xl:gap-2 xl:h-full',
-          desktopOverride && 'flex-row gap-2 h-full'
-        )}
-      >
+      {/* Mobile: col, xl: row with sidebar */}
+      <div className={cn(
+        'flex flex-col gap-3 lg:flex-row xl:h-full xl:gap-4',
+        desktopOverride && 'flex-row h-full gap-4'
+      )}>
         <Sidebar
           visitMode={visitMode}
           onToggleVisit={() => setVisitMode((prev) => !prev)}
           onOpenQr={() => setQrOpen(true)}
         />
 
-        <div
-          className={cn(
-            'grid flex-1 grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 xl:gap-2',
-            desktopOverride && 'grid-cols-[1fr_280px] gap-2'
-          )}
-        >
-          <div className={cn(
-            'flex flex-col gap-3 xl:gap-2 xl:min-h-0',
-            desktopOverride && 'gap-2 min-h-0'
-          )}>
-            {/* Header — compact, with verse merged on xl */}
-            <header className="flex items-center justify-between gap-3 rounded-lg border bg-card px-4 py-2.5 xl:py-2">
-              <div className="space-y-0.5 shrink-0">
-                <p className="text-[10px] uppercase text-muted-foreground tracking-[0.2em]">
-                  Família
-                </p>
-                <h1 className="text-xl xl:text-2xl font-bold leading-tight">Painel semanal</h1>
-              </div>
-              {focus ? (
-                <div className={cn(
-                  'hidden xl:flex flex-col items-center max-w-[45%] text-center px-3',
-                  desktopOverride && 'flex'
-                )}>
-                  <p className="text-sm font-medium text-foreground/80 line-clamp-1">{focus.text}</p>
-                  {focus.reference ? (
-                    <p className="text-xs text-primary font-medium">{focus.reference}</p>
-                  ) : null}
-                </div>
-              ) : null}
-              <div className="text-right shrink-0">
-                <p className="text-xs capitalize text-muted-foreground">{humanDate}</p>
-                <p className="text-2xl xl:text-4xl font-semibold tabular-nums leading-tight">{format(clock, 'HH:mm')}</p>
-              </div>
-            </header>
-
-            {/* Verse card — mobile/tablet only */}
+        {/* Content: header + body */}
+        <div className={cn(
+          'flex flex-1 flex-col gap-3 xl:min-h-0',
+          desktopOverride && 'min-h-0'
+        )}>
+          {/* Header */}
+          <header className="flex items-center justify-between gap-4 rounded-lg border bg-card px-4 py-3 shrink-0">
+            <div className="shrink-0">
+              <p className="text-[10px] uppercase text-muted-foreground tracking-[0.2em]">
+                Família
+              </p>
+              <h1 className="text-xl xl:text-2xl font-bold leading-tight">Painel semanal</h1>
+            </div>
             {focus ? (
-              <Card className={cn(
-                'border-dashed bg-card xl:hidden',
-                desktopOverride && 'hidden'
+              <div className={cn(
+                'hidden xl:flex flex-col items-center max-w-[45%] text-center px-3',
+                desktopOverride && 'flex'
               )}>
-                <CardHeader className="flex flex-row items-center justify-between gap-3 py-3">
-                  <div>
-                    <p className="text-xs uppercase text-muted-foreground tracking-wide">
-                      Versículo / Foco da semana
-                    </p>
-                    <CardTitle className="text-lg font-medium leading-snug line-clamp-2">
-                      {focus.text}
-                    </CardTitle>
-                    {focus.reference ? (
-                      <CardDescription className="mt-1 text-sm font-medium text-primary">
-                        {focus.reference}
-                      </CardDescription>
-                    ) : null}
-                  </div>
-                </CardHeader>
-              </Card>
-            ) : null}
-
-            {error && isProd && (
-              <Card className="border-destructive/60 bg-destructive/10">
-                <CardHeader className="py-2">
-                  <CardDescription className="text-destructive">{error}</CardDescription>
-                </CardHeader>
-              </Card>
-            )}
-            {isMock && (
-              <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
-                <CardHeader className="py-2">
-                  <CardDescription className="text-amber-700 dark:text-amber-400">
-                    Modo mock — dados não são reais.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            )}
-            {isStale && (
-              <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 dark:border-amber-800 dark:bg-amber-950">
-                <WifiOff className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                <p className="text-xs text-amber-700 dark:text-amber-400">Dados em cache — offline</p>
+                <p className="text-sm font-medium text-foreground/80 line-clamp-1">{focus.text}</p>
+                {focus.reference ? (
+                  <p className="text-xs text-primary font-medium">{focus.reference}</p>
+                ) : null}
               </div>
-            )}
+            ) : null}
+            <div className="text-right shrink-0">
+              <p className="text-xs capitalize text-muted-foreground">{humanDate}</p>
+              <p className="text-2xl xl:text-4xl font-semibold tabular-nums leading-tight">{format(clock, 'HH:mm')}</p>
+            </div>
+          </header>
 
-            {/* Week badges — mobile only */}
-            <div className={cn(
-              'flex flex-wrap items-center gap-2 xl:hidden',
+          {/* Verse card — mobile/tablet only */}
+          {focus ? (
+            <Card className={cn(
+              'border-dashed bg-card xl:hidden',
               desktopOverride && 'hidden'
             )}>
-              <Badge variant="muted" className="text-xs">
-                <Clock3 className="mr-1.5 h-3.5 w-3.5" />
-                {format(weekDays[0], 'dd/MM')}–{format(addDays(weekDays[0], 6), 'dd/MM')}
-              </Badge>
-              <Badge variant="outline" className="text-xs">
-                {visitLabel}
-              </Badge>
+              <CardHeader className="flex flex-row items-center justify-between gap-3 py-3">
+                <div>
+                  <p className="text-xs uppercase text-muted-foreground tracking-wide">
+                    Versículo / Foco da semana
+                  </p>
+                  <CardTitle className="text-lg font-medium leading-snug line-clamp-2">
+                    {focus.text}
+                  </CardTitle>
+                  {focus.reference ? (
+                    <CardDescription className="mt-1 text-sm font-medium text-primary">
+                      {focus.reference}
+                    </CardDescription>
+                  ) : null}
+                </div>
+              </CardHeader>
+            </Card>
+          ) : null}
+
+          {/* Status banners */}
+          {error && isProd && (
+            <Card className="border-destructive/60 bg-destructive/10 shrink-0">
+              <CardHeader className="py-2">
+                <CardDescription className="text-destructive">{error}</CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+          {isMock && (
+            <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 shrink-0">
+              <CardHeader className="py-2">
+                <CardDescription className="text-amber-700 dark:text-amber-400">
+                  Modo mock — dados não são reais.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+          {isStale && (
+            <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 dark:border-amber-800 dark:bg-amber-950 shrink-0">
+              <WifiOff className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+              <p className="text-xs text-amber-700 dark:text-amber-400">Dados em cache — offline</p>
             </div>
+          )}
 
-            <ErrorBoundary sectionName="Calendário">
-              <CalendarGrid loading={loading} days={calendarByDay} people={data?.people ?? []} />
-            </ErrorBoundary>
-
-            <ErrorBoundary sectionName="Rotinas">
-              <KidsGrid
-                people={activeKids}
-                templates={data?.kidRoutineTemplates ?? []}
-                checks={routineChecks}
-                onToggle={handleToggleRoutine}
-                visitMode={visitMode}
-              />
-            </ErrorBoundary>
+          {/* Week badges — mobile only */}
+          <div className={cn(
+            'flex flex-wrap items-center gap-2 xl:hidden',
+            desktopOverride && 'hidden'
+          )}>
+            <Badge variant="muted" className="text-xs">
+              <Clock3 className="mr-1.5 h-3.5 w-3.5" />
+              {format(weekDays[0], 'dd/MM')}–{format(addDays(weekDays[0], 6), 'dd/MM')}
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              {visitLabel}
+            </Badge>
           </div>
 
-          <ErrorBoundary sectionName="Coluna lateral">
-            <RightColumn loading={loading} data={data} />
-          </ErrorBoundary>
+          {/* Body: calendar + right panel side by side on xl */}
+          <div className={cn(
+            'flex flex-col gap-3 xl:flex-row xl:flex-1 xl:min-h-0 xl:gap-4',
+            desktopOverride && 'flex-row flex-1 min-h-0 gap-4'
+          )}>
+            {/* Calendar: fills available width and height on xl */}
+            <div className={cn(
+              'xl:flex-1 xl:min-w-0 xl:flex xl:flex-col',
+              desktopOverride && 'flex-1 min-w-0 flex flex-col'
+            )}>
+              <ErrorBoundary sectionName="Calendário">
+                <CalendarGrid loading={loading} days={calendarByDay} people={data?.people ?? []} />
+              </ErrorBoundary>
+            </div>
+
+            {/* Right panel: kids + replenish + homeschool */}
+            <div className={cn(
+              'flex flex-col gap-3 xl:w-[360px] xl:shrink-0 xl:overflow-y-auto',
+              desktopOverride && 'w-[360px] shrink-0 overflow-y-auto'
+            )}>
+              <ErrorBoundary sectionName="Rotinas">
+                <KidsGrid
+                  people={activeKids}
+                  templates={data?.kidRoutineTemplates ?? []}
+                  checks={routineChecks}
+                  onToggle={handleToggleRoutine}
+                  visitMode={visitMode}
+                />
+              </ErrorBoundary>
+
+              <ErrorBoundary sectionName="Coluna lateral">
+                <RightColumn loading={loading} data={data} />
+              </ErrorBoundary>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -464,34 +476,34 @@ function CalendarGrid({
   return (
     <div
       className={cn(
-        'grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7',
-        desktopOverride && 'grid-cols-7'
+        'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 xl:flex-1',
+        desktopOverride && 'grid-cols-7 flex-1'
       )}
     >
       {days.map(({ date, items }) => {
         const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' });
-        const maxEvents = 3;
+        const maxEvents = 8;
         const overflow = Math.max(items.length - maxEvents, 0);
         return (
           <div
             key={formatISO(date)}
-            className="rounded-lg border bg-card p-3 xl:p-2"
+            className="flex flex-col rounded-lg border bg-card p-3"
           >
-            <div className="flex items-center justify-between gap-1 mb-1.5">
+            <div className="flex items-center justify-between gap-1 mb-2">
               <div className="flex items-baseline gap-1.5">
-                <p className="text-[10px] xl:text-xs uppercase tracking-wide text-muted-foreground">{dayName}</p>
-                <p className="text-xl xl:text-2xl font-semibold leading-tight">{format(date, 'dd')}</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">{dayName}</p>
+                <p className="text-2xl font-semibold leading-tight">{format(date, 'dd')}</p>
               </div>
               {items.length > 0 && (
                 <span className="text-[10px] text-muted-foreground">{items.length}</span>
               )}
             </div>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1.5 flex-1">
               {loading ? (
                 <Skeleton className="h-4 w-full" />
               ) : items.length === 0 ? (
-                <p className="text-xs text-muted-foreground">—</p>
+                <p className="text-xs text-muted-foreground/50">—</p>
               ) : (
                 items.slice(0, maxEvents).map((item) => {
                   const person = personById.get(item.personId);
@@ -499,7 +511,7 @@ function CalendarGrid({
                   return (
                     <div key={item.id} className="flex items-center gap-1.5 min-w-0">
                       <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dotColor }} />
-                      <p className="text-xs xl:text-sm truncate">
+                      <p className="text-sm truncate">
                         <span className="font-medium">{item.title}</span>
                         {item.timeText ? (
                           <span className="text-muted-foreground"> · {item.timeText}</span>
@@ -533,7 +545,6 @@ function KidsGrid({
   onToggle: (templateId: string) => Promise<void> | void;
   visitMode: boolean;
 }) {
-  const desktopOverride = useDesktopOverrideValue();
   const todayKey = getFamilyDateKey();
 
   if (visitMode) {
@@ -548,29 +559,26 @@ function KidsGrid({
   }
 
   return (
-    <div className={cn(
-      'grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] xl:grid-cols-4 gap-2',
-      desktopOverride && 'grid-cols-4'
-    )}>
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
       {people.map((kid) => {
         const kidTemplates = templates.filter((t) => t.personId === kid.id && t.isActive);
         const completedIds = checks
           .filter((c: any) => c.date === todayKey && c.completed)
           .map((c: any) => c.templateId);
-        const { visible: visibleRoutines, overflow: routineOverflow } = getVisibleWithOverflow(kidTemplates, 5);
+        const { visible: visibleRoutines, overflow: routineOverflow } = getVisibleWithOverflow(kidTemplates, 6);
 
         return (
           <Card key={kid.id} className="border bg-card">
-            <CardHeader className="flex flex-row items-center justify-between py-2 px-3 xl:py-1.5">
-              <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: kid.color }} aria-hidden />
-                <CardTitle className="text-sm xl:text-base">{kid.name}</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between py-2.5 px-3">
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: kid.color }} aria-hidden />
+                <CardTitle className="text-base">{kid.name}</CardTitle>
               </div>
               <span className="text-xs text-muted-foreground">
                 {completedIds.length}/{kidTemplates.length || 1}
               </span>
             </CardHeader>
-            <CardContent className="flex flex-col gap-1.5 px-3 pb-3 xl:gap-1 xl:pb-2">
+            <CardContent className="flex flex-col gap-1.5 px-3 pb-3">
               {kidTemplates.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Sem rotinas</p>
               ) : (
@@ -582,7 +590,7 @@ function KidsGrid({
                       type="button"
                       onClick={() => onToggle(routine.id)}
                       className={cn(
-                        'flex items-center gap-2 rounded-md border px-2.5 py-2 xl:py-1.5 text-left text-sm xl:text-base font-medium transition-all active:scale-[0.98]',
+                        'flex items-center gap-2.5 rounded-md border px-3 py-2 text-left text-sm font-medium transition-all active:scale-[0.98]',
                         done
                           ? 'border-emerald-500/50 bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                           : 'border-border bg-card hover:bg-muted/30 active:bg-muted/50'
@@ -590,11 +598,11 @@ function KidsGrid({
                     >
                       <span
                         className={cn(
-                          'grid h-6 w-6 xl:h-7 xl:w-7 shrink-0 place-items-center rounded-full border-2',
+                          'grid h-6 w-6 shrink-0 place-items-center rounded-full border-2',
                           done ? 'border-emerald-500 bg-white text-emerald-600 dark:bg-emerald-900' : 'border-border bg-muted text-muted-foreground'
                         )}
                       >
-                        <Check className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
+                        <Check className="h-3.5 w-3.5" />
                       </span>
                       <span className="truncate">{routine.title}</span>
                     </button>
@@ -613,7 +621,6 @@ function KidsGrid({
 }
 
 function RightColumn({ data, loading }: { data: any; loading: boolean }) {
-  const desktopOverride = useDesktopOverrideValue();
   const replenish = useMemo(() => {
     if (!data) return [];
     const urgentFirst = [...data.replenishItems].sort((a, b) =>
@@ -628,31 +635,26 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
   );
 
   return (
-    <div
-      className={cn(
-        'flex flex-col gap-2 lg:sticky lg:top-3 xl:overflow-auto xl:max-h-full',
-        desktopOverride && 'sticky top-3 overflow-auto max-h-full'
-      )}
-    >
+    <div className="flex flex-col gap-3">
       <Card className="bg-card">
-        <CardHeader className="py-2.5 px-3 xl:py-2">
+        <CardHeader className="py-2.5 px-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm xl:text-base">Reposição</CardTitle>
+            <CardTitle className="text-base">Reposição</CardTitle>
             <span className="text-xs text-muted-foreground">{replenish.length}</span>
           </div>
         </CardHeader>
-        <CardContent className="px-3 pb-3 xl:pb-2">
+        <CardContent className="px-3 pb-3">
           {loading ? (
             <Skeleton className="h-4 w-full" />
           ) : replenish.length === 0 ? (
             <p className="text-xs text-muted-foreground">Nada pendente.</p>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {replenish.slice(0, 8).map((item) => (
                 <div
                   key={item.id}
                   className={cn(
-                    'flex items-center justify-between rounded-md border px-2.5 py-1.5',
+                    'flex items-center justify-between rounded-md border px-3 py-1.5',
                     item.urgency === 'now'
                       ? 'border-destructive/60 bg-destructive/10 text-destructive'
                       : 'border-amber-400/60 bg-amber-50 text-amber-700 dark:border-amber-600/60 dark:bg-amber-950 dark:text-amber-400'
@@ -673,21 +675,21 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
       </Card>
 
       <Card className="bg-card">
-        <CardHeader className="py-2.5 px-3 xl:py-2">
+        <CardHeader className="py-2.5 px-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm xl:text-base">Homeschool</CardTitle>
+            <CardTitle className="text-base">Homeschool</CardTitle>
             <span className="text-xs text-muted-foreground">{kids.length} kids</span>
           </div>
         </CardHeader>
-        <CardContent className="px-3 pb-3 xl:pb-2">
+        <CardContent className="px-3 pb-3">
           {kids.map((kid: Person) => {
             const note = data?.homeschoolNotes.find((n: any) => n.kidPersonId === kid.id);
             const topics = note?.notes ?? [];
             const overflow = Math.max(topics.length - 6, 0);
 
             return (
-              <div key={kid.id} className="mb-2.5 last:mb-0">
-                <div className="mb-1 flex items-center gap-1.5">
+              <div key={kid.id} className="mb-3 last:mb-0">
+                <div className="mb-1.5 flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: kid.color }} />
                   <p className="text-sm font-medium">{kid.name}</p>
                 </div>
@@ -696,7 +698,7 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
                 ) : topics.length === 0 ? (
                   <p className="text-xs text-muted-foreground">—</p>
                 ) : (
-                  <ul className="space-y-0.5 text-xs xl:text-sm text-foreground">
+                  <ul className="space-y-0.5 text-sm text-foreground">
                     {topics.slice(0, 6).map((topic: string, idx: number) => (
                       <li key={idx} className="flex items-start gap-1.5">
                         <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" />
