@@ -1,4 +1,4 @@
-import { Moon, RefreshCcw, Sun } from 'lucide-react';
+import { LogOut, Moon, RefreshCcw, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -41,31 +41,13 @@ function EditPage() {
 
   const supabaseReady = Boolean(supabase) && hasConfig;
 
+  const handleLogout = async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    toast.success('Sessão encerrada');
+  };
+
   useEffect(() => {
-    const handleHashErrors = () => {
-      const hash = window.location.hash || '';
-      if (!hash.includes('error')) return;
-      const params = new URLSearchParams(hash.replace(/^#/, ''));
-      const errorCode = params.get('error_code');
-      const error = params.get('error');
-      const errorDescription = params.get('error_description');
-
-      if (errorCode === 'otp_expired' || errorCode === 'access_denied') {
-        toast.error('Link expirado ou inválido', {
-          description: 'Solicite um novo link e abra apenas uma vez.',
-        });
-      } else if (error || errorDescription) {
-        toast.error(error || 'Erro de autenticação', {
-          description: errorDescription ?? undefined,
-        });
-      }
-
-      // Limpa o hash para evitar loops
-      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-    };
-
-    handleHashErrors();
-
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
@@ -84,7 +66,12 @@ function EditPage() {
             <p className="text-xs uppercase text-muted-foreground tracking-[0.2em]">Administração</p>
             <h1 className="text-2xl font-bold">Family Dashboard</h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {session && (
+              <span className="hidden text-xs text-muted-foreground sm:inline">
+                {session.user.email}
+              </span>
+            )}
             <Button variant="ghost" size="icon" onClick={toggleDark} className="h-9 w-9">
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
@@ -95,6 +82,12 @@ function EditPage() {
               <RefreshCcw className="mr-2 h-4 w-4" />
               Atualizar
             </Button>
+            {session && (
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
+                <LogOut className="mr-1.5 h-4 w-4" />
+                Sair
+              </Button>
+            )}
           </div>
         </div>
 
