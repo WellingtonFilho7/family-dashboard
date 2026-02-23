@@ -92,7 +92,7 @@ export function PeopleAdmin({
     <Card>
       <CardHeader>
         <CardTitle>Pessoas</CardTitle>
-        <CardDescription>Ordem controlada por sort_order.</CardDescription>
+        <CardDescription>Membros da família e visitantes.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -143,7 +143,7 @@ export function PeopleAdmin({
             )}
           </div>
           <select
-            className="h-11 rounded-lg border px-3 text-sm"
+            className="h-11 rounded-lg border bg-background text-foreground px-3 text-sm"
             value={form.type}
             onChange={(e) => setForm({ ...form, type: e.target.value })}
             disabled={disabled}

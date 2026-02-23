@@ -53,17 +53,21 @@ export function AgendaAdmin({
   const createRecurring = async () => {
     if (!requireAuth(hasSession)) return;
     if (!recForm.title || !recForm.personId) return toast.error('Título e pessoa são obrigatórios');
-    const { error } = await supabase!.from('recurring_items').insert({
-      title: recForm.title,
-      day_of_week: recForm.dayOfWeek,
-      time_text: recForm.timeText,
-      person_id: recForm.personId,
-      is_private: recForm.isPrivate,
-    });
-    if (error) return toast.error(error.message);
-    toast.success('Evento recorrente criado');
-    setRecForm((prev) => ({ ...prev, title: '', timeText: '' }));
-    refresh();
+    try {
+      const { error } = await supabase!.from('recurring_items').insert({
+        title: recForm.title,
+        day_of_week: recForm.dayOfWeek,
+        time_text: recForm.timeText || null,
+        person_id: recForm.personId,
+        is_private: recForm.isPrivate,
+      });
+      if (error) return toast.error(error.message);
+      toast.success('Evento recorrente criado');
+      setRecForm((prev) => ({ ...prev, title: '', timeText: '' }));
+      refresh();
+    } catch (err) {
+      toast.error('Erro de rede ao criar evento');
+    }
   };
 
   const createOneOff = async () => {
@@ -71,17 +75,21 @@ export function AgendaAdmin({
     if (!oneOffForm.title || !oneOffForm.personId || !oneOffForm.date) {
       return toast.error('Título, pessoa e data são obrigatórios');
     }
-    const { error } = await supabase!.from('one_off_items').insert({
-      title: oneOffForm.title,
-      date: oneOffForm.date,
-      time_text: oneOffForm.timeText,
-      person_id: oneOffForm.personId,
-      is_private: oneOffForm.isPrivate,
-    });
-    if (error) return toast.error(error.message);
-    toast.success('Evento pontual criado');
-    setOneOffForm((prev) => ({ ...prev, title: '', timeText: '' }));
-    refresh();
+    try {
+      const { error } = await supabase!.from('one_off_items').insert({
+        title: oneOffForm.title,
+        date: oneOffForm.date,
+        time_text: oneOffForm.timeText || null,
+        person_id: oneOffForm.personId,
+        is_private: oneOffForm.isPrivate,
+      });
+      if (error) return toast.error(error.message);
+      toast.success('Evento pontual criado');
+      setOneOffForm((prev) => ({ ...prev, title: '', timeText: '' }));
+      refresh();
+    } catch (err) {
+      toast.error('Erro de rede ao criar evento');
+    }
   };
 
   const updateTitle = async (table: 'recurring_items' | 'one_off_items', id: string, newTitle: string) => {
@@ -118,7 +126,7 @@ export function AgendaAdmin({
     <Card>
       <CardHeader>
         <CardTitle>Agenda</CardTitle>
-        <CardDescription>Recorrentes (day_of_week 1=Dom...7=Sáb) e pontuais.</CardDescription>
+        <CardDescription>Eventos recorrentes e pontuais da família.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
@@ -131,7 +139,7 @@ export function AgendaAdmin({
               disabled={disabled}
             />
             <select
-              className="h-11 rounded-lg border px-3 text-sm"
+              className="h-11 rounded-lg border bg-background text-foreground px-3 text-sm"
               value={recForm.dayOfWeek}
               onChange={(e) => setRecForm({ ...recForm, dayOfWeek: Number(e.target.value) })}
               disabled={disabled}
@@ -149,7 +157,7 @@ export function AgendaAdmin({
               disabled={disabled}
             />
             <select
-              className="h-11 rounded-lg border px-3 text-sm"
+              className="h-11 rounded-lg border bg-background text-foreground px-3 text-sm"
               value={recForm.personId}
               onChange={(e) => setRecForm({ ...recForm, personId: e.target.value })}
               disabled={disabled}
@@ -200,7 +208,7 @@ export function AgendaAdmin({
               disabled={disabled}
             />
             <select
-              className="h-11 rounded-lg border px-3 text-sm"
+              className="h-11 rounded-lg border bg-background text-foreground px-3 text-sm"
               value={oneOffForm.personId}
               onChange={(e) => setOneOffForm({ ...oneOffForm, personId: e.target.value })}
               disabled={disabled}

@@ -80,7 +80,7 @@ export function RoutinesAdmin({
     <Card>
       <CardHeader>
         <CardTitle>Rotinas das crianças</CardTitle>
-        <CardDescription>Checks gravados com unique(template_id, date).</CardDescription>
+        <CardDescription>Tarefas diárias para cada criança.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
@@ -91,7 +91,7 @@ export function RoutinesAdmin({
             disabled={disabled}
           />
           <select
-            className="h-11 rounded-lg border px-3 text-sm"
+            className="h-11 rounded-lg border bg-background text-foreground px-3 text-sm"
             value={form.personId}
             onChange={(e) => setForm({ ...form, personId: e.target.value })}
             disabled={disabled}

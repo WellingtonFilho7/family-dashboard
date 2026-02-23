@@ -74,7 +74,7 @@ export function ContentAdmin({
     <Card>
       <CardHeader>
         <CardTitle>Conteúdo da semana</CardTitle>
-        <CardDescription>Versículo/foco e homeschool por criança.</CardDescription>
+        <CardDescription>Versículo da semana e tópicos de homeschool.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
@@ -101,7 +101,7 @@ export function ContentAdmin({
         <div className="space-y-2">
           <p className="text-sm font-semibold">Homeschool</p>
           <select
-            className="h-11 rounded-lg border px-3 text-sm"
+            className="h-11 rounded-lg border bg-background text-foreground px-3 text-sm"
             value={noteKid}
             onChange={(e) => setNoteKid(e.target.value)}
             disabled={disabled}
@@ -130,7 +130,7 @@ export function ContentAdmin({
           )}
 
           <textarea
-            className="min-h-[140px] w-full rounded-lg border px-3 py-2 text-sm"
+            className="min-h-[140px] w-full rounded-lg border bg-background text-foreground px-3 py-2 text-sm"
             placeholder="Uma linha por tópico"
             value={noteContent}
             onChange={(e) => setNoteContent(e.target.value)}

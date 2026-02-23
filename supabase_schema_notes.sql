@@ -113,3 +113,9 @@ drop policy if exists "auth_all_settings" on settings;
 create policy "auth_all_settings" on settings
   for all using (auth.role() = 'authenticated')
   with check (auth.role() = 'authenticated');
+
+-- 6) Auth: email+password (não OTP)
+-- O app usa signInWithPassword / signUp. Para permitir sign-up sem
+-- confirmação de e-mail (recomendado para uso doméstico):
+--   Supabase Dashboard → Authentication → Providers → Email
+--   Desmarcar "Confirm email"
