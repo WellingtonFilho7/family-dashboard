@@ -121,7 +121,7 @@ export function EditableText({
       className="group flex items-center gap-1.5 text-left"
     >
       <span className="text-sm font-semibold">{value}</span>
-      <Pencil className="h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100" />
+      <Pencil className="h-3 w-3 text-muted-foreground/50" />
     </button>
   );
 }
