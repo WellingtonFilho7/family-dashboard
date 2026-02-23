@@ -19,6 +19,31 @@ export function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isReset, setIsReset] = useState(false);
+
+  const handleResetPassword = async () => {
+    if (!supabase) return;
+    if (!email) {
+      toast.error('Preencha o e-mail para redefinir a senha');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/editar`,
+      });
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('E-mail de redefinição enviado!', {
+          description: 'Verifique sua caixa de entrada.',
+        });
+        setIsReset(false);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -66,7 +91,7 @@ export function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
       <CardHeader>
         <CardTitle>Área administrativa</CardTitle>
         <CardDescription>
-          {isSignUp ? 'Criar conta de administrador.' : 'Entre com e-mail e senha.'}
+          {isReset ? 'Enviaremos um link para redefinir sua senha.' : isSignUp ? 'Criar conta de administrador.' : 'Entre com e-mail e senha.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -75,66 +100,112 @@ export function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
             Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para ativar o login.
           </div>
         )}
-        <form className="space-y-3" onSubmit={handleSubmit}>
-          <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-foreground">E-mail</label>
-            <Input
-              type="email"
-              placeholder="admin@familia.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={!supabaseReady || loading}
-              autoComplete="email"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-foreground">Senha</label>
-            <div className="relative">
+        {isReset ? (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-foreground">E-mail</label>
               <Input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                type="email"
+                placeholder="admin@familia.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 disabled={!supabaseReady || loading}
-                autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                className="pr-10"
+                autoComplete="email"
               />
+            </div>
+            <Button onClick={handleResetPassword} disabled={!supabaseReady || loading} className="w-full">
+              {loading ? (
+                <>
+                  <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                'Enviar link de redefinição'
+              )}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setIsReset(false)}
+              className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+            >
+              Voltar ao login
+            </button>
+          </div>
+        ) : (
+          <>
+            <form className="space-y-3" onSubmit={handleSubmit}>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-foreground">E-mail</label>
+                <Input
+                  type="email"
+                  placeholder="admin@familia.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={!supabaseReady || loading}
+                  autoComplete="email"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-foreground">Senha</label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={!supabaseReady || loading}
+                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <Button type="submit" disabled={!supabaseReady || loading} className="w-full">
+                {loading ? (
+                  <>
+                    <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
+                    {isSignUp ? 'Criando...' : 'Entrando...'}
+                  </>
+                ) : isSignUp ? (
+                  <>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Criar conta
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Entrar
+                  </>
+                )}
+              </Button>
+            </form>
+            <div className="flex flex-col items-center gap-1.5">
+              {!isSignUp && (
+                <button
+                  type="button"
+                  onClick={() => setIsReset(true)}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Esqueci minha senha
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                tabIndex={-1}
+                onClick={() => setIsSignUp((prev) => !prev)}
+                className="text-sm text-muted-foreground hover:text-foreground"
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {isSignUp ? 'Já tem conta? Entrar' : 'Primeira vez? Criar conta'}
               </button>
             </div>
-          </div>
-          <Button type="submit" disabled={!supabaseReady || loading} className="w-full">
-            {loading ? (
-              <>
-                <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
-                {isSignUp ? 'Criando...' : 'Entrando...'}
-              </>
-            ) : isSignUp ? (
-              <>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Criar conta
-              </>
-            ) : (
-              <>
-                <LogIn className="mr-2 h-4 w-4" />
-                Entrar
-              </>
-            )}
-          </Button>
-        </form>
-        <button
-          type="button"
-          onClick={() => setIsSignUp((prev) => !prev)}
-          className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
-        >
-          {isSignUp ? 'Já tem conta? Entrar' : 'Primeira vez? Criar conta'}
-        </button>
+          </>
+        )}
       </CardContent>
     </Card>
   );
