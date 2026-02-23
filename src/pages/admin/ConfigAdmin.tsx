@@ -35,7 +35,7 @@ export function ConfigAdmin({
     <Card>
       <CardHeader>
         <CardTitle>Configurações</CardTitle>
-        <CardDescription>Visit_mode singleton id=1.</CardDescription>
+        <CardDescription>Opções gerais do painel.</CardDescription>
       </CardHeader>
       <CardContent className="flex items-center gap-3">
         <span className="text-sm font-semibold">Modo visitas</span>

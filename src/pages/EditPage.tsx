@@ -114,11 +114,11 @@ function EditPage() {
         {session ? (
           <div className="flex flex-wrap gap-2">
             {[
-              { key: 'people', label: 'Pessoas' },
-              { key: 'agenda', label: 'Agenda' },
-              { key: 'routines', label: 'Rotinas' },
-              { key: 'replenish', label: 'Reposição' },
-              { key: 'content', label: 'Conteúdo' },
+              { key: 'people', label: 'Pessoas', count: data?.people?.length },
+              { key: 'agenda', label: 'Agenda', count: (data?.recurringItems?.length ?? 0) + (data?.oneOffItems?.length ?? 0) },
+              { key: 'routines', label: 'Rotinas', count: data?.kidRoutineTemplates?.length },
+              { key: 'replenish', label: 'Reposição', count: data?.replenishItems?.length },
+              { key: 'content', label: 'Conteúdo', count: (data?.weeklyFocus?.length ?? 0) + (data?.homeschoolNotes?.length ?? 0) },
               { key: 'config', label: 'Config' },
             ].map((item) => (
               <Button
@@ -128,6 +128,11 @@ function EditPage() {
                 onClick={() => setCategory(item.key as AdminCategory)}
               >
                 {item.label}
+                {'count' in item && item.count != null ? (
+                  <span className="ml-1.5 rounded-full bg-foreground/10 px-1.5 py-0.5 text-xs tabular-nums leading-none">
+                    {item.count}
+                  </span>
+                ) : null}
               </Button>
             ))}
           </div>

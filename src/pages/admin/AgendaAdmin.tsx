@@ -126,7 +126,7 @@ export function AgendaAdmin({
     <Card>
       <CardHeader>
         <CardTitle>Agenda</CardTitle>
-        <CardDescription>Recorrentes (day_of_week 1=Dom...7=Sáb) e pontuais.</CardDescription>
+        <CardDescription>Eventos recorrentes e pontuais da família.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
@@ -139,7 +139,7 @@ export function AgendaAdmin({
               disabled={disabled}
             />
             <select
-              className="h-11 rounded-lg border px-3 text-sm"
+              className="h-11 rounded-lg border bg-background text-foreground px-3 text-sm"
               value={recForm.dayOfWeek}
               onChange={(e) => setRecForm({ ...recForm, dayOfWeek: Number(e.target.value) })}
               disabled={disabled}
@@ -157,7 +157,7 @@ export function AgendaAdmin({
               disabled={disabled}
             />
             <select
-              className="h-11 rounded-lg border px-3 text-sm"
+              className="h-11 rounded-lg border bg-background text-foreground px-3 text-sm"
               value={recForm.personId}
               onChange={(e) => setRecForm({ ...recForm, personId: e.target.value })}
               disabled={disabled}
@@ -208,7 +208,7 @@ export function AgendaAdmin({
               disabled={disabled}
             />
             <select
-              className="h-11 rounded-lg border px-3 text-sm"
+              className="h-11 rounded-lg border bg-background text-foreground px-3 text-sm"
               value={oneOffForm.personId}
               onChange={(e) => setOneOffForm({ ...oneOffForm, personId: e.target.value })}
               disabled={disabled}

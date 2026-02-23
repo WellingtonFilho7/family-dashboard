@@ -12,7 +12,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { addDays, format, formatISO } from 'date-fns';
+import { addDays, format, formatISO, isSameDay } from 'date-fns';
 import { Toaster, toast } from 'sonner';
 
 import { useKioskData } from '@/hooks/useKioskData';
@@ -32,10 +32,6 @@ import {
   DialogTitle,
   Skeleton,
   Switch,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
 } from '@/components';
 import { getDesktopOverrideFromSearch, resolveDesktopOverride } from '@/lib/desktop-override';
 import { isDebugEnabled } from '@/lib/debug-utils';
@@ -51,15 +47,13 @@ function App() {
   return (
     <BrowserRouter>
       <DesktopOverrideProvider>
-        <TooltipProvider delayDuration={0}>
-          <Routes>
-            <Route path="/painel" element={<PanelPage />} />
-            <Route path="/editar" element={<EditPage />} />
-            <Route path="*" element={<Navigate to="/painel" replace />} />
-          </Routes>
-          <DebugOverlay />
-          <Toaster position="top-right" richColors closeButton />
-        </TooltipProvider>
+        <Routes>
+          <Route path="/painel" element={<PanelPage />} />
+          <Route path="/editar" element={<EditPage />} />
+          <Route path="*" element={<Navigate to="/painel" replace />} />
+        </Routes>
+        <DebugOverlay />
+        <Toaster position="top-right" richColors />
       </DesktopOverrideProvider>
     </BrowserRouter>
   );
@@ -223,10 +217,12 @@ function PanelPage() {
   };
 
   const visitLabel = visitMode ? 'Visitantes' : 'Família';
+  const hour = clock.getHours();
+  const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
   const humanDate = clock.toLocaleDateString('pt-BR', {
     weekday: 'long',
     day: '2-digit',
-    month: 'short',
+    month: 'long',
   });
 
   return (
@@ -253,25 +249,22 @@ function PanelPage() {
           {/* Header */}
           <header className="flex items-center justify-between gap-4 rounded-lg border bg-card px-4 py-3 shrink-0">
             <div className="shrink-0">
-              <p className="text-[10px] uppercase text-muted-foreground tracking-[0.2em]">
-                Família
-              </p>
-              <h1 className="text-xl xl:text-2xl font-bold leading-tight">Painel semanal</h1>
+              <p className="text-sm xl:text-lg font-medium text-muted-foreground">{greeting}</p>
+              <h1 className="text-base xl:text-xl font-bold capitalize leading-tight">{humanDate}</h1>
             </div>
             {focus ? (
               <div className={cn(
-                'hidden xl:flex flex-col items-center max-w-[45%] text-center px-3',
+                'hidden xl:flex flex-col items-center max-w-[50%] text-center px-4',
                 desktopOverride && 'flex'
               )}>
-                <p className="text-sm font-medium text-foreground/80 line-clamp-1">{focus.text}</p>
+                <p className="text-sm xl:text-base font-medium text-foreground/80 line-clamp-2">{focus.text}</p>
                 {focus.reference ? (
-                  <p className="text-xs text-primary font-medium">{focus.reference}</p>
+                  <p className="text-xs xl:text-sm text-primary font-medium">{focus.reference}</p>
                 ) : null}
               </div>
             ) : null}
             <div className="text-right shrink-0">
-              <p className="text-xs capitalize text-muted-foreground">{humanDate}</p>
-              <p className="text-2xl xl:text-4xl font-semibold tabular-nums leading-tight">{format(clock, 'HH:mm')}</p>
+              <p className="text-2xl xl:text-5xl font-semibold tabular-nums leading-tight">{format(clock, 'HH:mm')}</p>
             </div>
           </header>
 
@@ -405,39 +398,31 @@ function Sidebar({
           desktopOverride && 'flex-col items-center gap-2 px-3 py-4 justify-start'
         )}
       >
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                'h-14 w-14 rounded-lg lg:h-12 lg:w-12 active:scale-95 transition-transform',
-                desktopOverride && 'h-12 w-12'
-              )}
-              onClick={onOpenQr}
-            >
-              <QrCode className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="lg:side-right">Editar via QR</TooltipContent>
-        </Tooltip>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            'h-14 w-14 rounded-lg lg:h-12 lg:w-12 active:scale-95 transition-transform',
+            desktopOverride && 'h-12 w-12'
+          )}
+          onClick={onOpenQr}
+          aria-label="Editar via QR"
+        >
+          <QrCode className="h-5 w-5" />
+        </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                'h-14 w-14 rounded-lg lg:h-12 lg:w-12 active:scale-95 transition-transform',
-                desktopOverride && 'h-12 w-12'
-              )}
-              onClick={toggleDark}
-            >
-              {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="lg:side-right">{dark ? 'Modo claro' : 'Modo escuro'}</TooltipContent>
-        </Tooltip>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            'h-14 w-14 rounded-lg lg:h-12 lg:w-12 active:scale-95 transition-transform',
+            desktopOverride && 'h-12 w-12'
+          )}
+          onClick={toggleDark}
+          aria-label={dark ? 'Modo claro' : 'Modo escuro'}
+        >
+          {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+        </Button>
 
         <div
           className={cn(
@@ -472,6 +457,7 @@ function CalendarGrid({
   const desktopOverride = useDesktopOverrideValue();
   const personById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const fallbackColor = '#0EA5E9';
+  const now = useMemo(() => new Date(), []);
 
   return (
     <div
@@ -482,24 +468,29 @@ function CalendarGrid({
     >
       {days.map(({ date, items }) => {
         const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' });
+        const today = isSameDay(date, now);
         const maxEvents = 8;
         const overflow = Math.max(items.length - maxEvents, 0);
         return (
           <div
             key={formatISO(date)}
-            className="flex flex-col rounded-lg border bg-card p-3"
+            className={cn(
+              'flex flex-col rounded-lg border bg-card p-3',
+              today && 'ring-2 ring-primary/40 bg-primary/5 dark:bg-primary/10'
+            )}
           >
-            <div className="flex items-center justify-between gap-1 mb-2">
-              <div className="flex items-baseline gap-1.5">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">{dayName}</p>
-                <p className="text-2xl font-semibold leading-tight">{format(date, 'dd')}</p>
-              </div>
-              {items.length > 0 && (
-                <span className="text-[10px] text-muted-foreground">{items.length}</span>
-              )}
+            <div className="flex items-baseline gap-1.5 mb-2">
+              <p className={cn(
+                'text-xs xl:text-sm uppercase tracking-wide',
+                today ? 'text-primary font-semibold' : 'text-muted-foreground'
+              )}>{dayName}</p>
+              <p className={cn(
+                'text-2xl xl:text-3xl font-semibold leading-tight',
+                today && 'text-primary'
+              )}>{format(date, 'dd')}</p>
             </div>
 
-            <div className="flex flex-col gap-1.5 flex-1">
+            <div className="flex flex-col gap-1.5 xl:gap-2 flex-1">
               {loading ? (
                 <Skeleton className="h-4 w-full" />
               ) : items.length === 0 ? (
@@ -510,8 +501,8 @@ function CalendarGrid({
                   const dotColor = person?.color ?? item.personColor ?? fallbackColor;
                   return (
                     <div key={item.id} className="flex items-center gap-1.5 min-w-0">
-                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dotColor }} />
-                      <p className="text-sm truncate">
+                      <span className="h-2 w-2 xl:h-3 xl:w-3 shrink-0 rounded-full" style={{ backgroundColor: dotColor }} />
+                      <p className="text-sm xl:text-base truncate">
                         <span className="font-medium">{item.title}</span>
                         {item.timeText ? (
                           <span className="text-muted-foreground"> · {item.timeText}</span>
@@ -522,7 +513,7 @@ function CalendarGrid({
                 })
               )}
               {overflow > 0 ? (
-                <p className="text-[10px] text-muted-foreground">+{overflow}</p>
+                <p className="text-xs text-muted-foreground">+{overflow}</p>
               ) : null}
             </div>
           </div>
@@ -565,20 +556,31 @@ function KidsGrid({
         const completedIds = checks
           .filter((c: any) => c.date === todayKey && c.completed)
           .map((c: any) => c.templateId);
+        const completedCount = kidTemplates.filter((t) => completedIds.includes(t.id)).length;
         const { visible: visibleRoutines, overflow: routineOverflow } = getVisibleWithOverflow(kidTemplates, 6);
 
         return (
           <Card key={kid.id} className="border bg-card">
-            <CardHeader className="flex flex-row items-center justify-between py-2.5 px-3">
+            <CardHeader className="flex flex-row items-center justify-between py-2.5 px-3 xl:px-4">
               <div className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: kid.color }} aria-hidden />
-                <CardTitle className="text-base">{kid.name}</CardTitle>
+                <span className="h-3 w-3 xl:h-4 xl:w-4 rounded-full" style={{ backgroundColor: kid.color }} aria-hidden />
+                <CardTitle className="text-base xl:text-lg">{kid.name}</CardTitle>
               </div>
-              <span className="text-xs text-muted-foreground">
-                {completedIds.length}/{kidTemplates.length || 1}
-              </span>
+              {kidTemplates.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {kidTemplates.map((t, i) => (
+                    <span
+                      key={t.id}
+                      className={cn(
+                        'h-2 w-2 xl:h-2.5 xl:w-2.5 rounded-full',
+                        i < completedCount ? 'bg-emerald-500' : 'bg-muted-foreground/20'
+                      )}
+                    />
+                  ))}
+                </div>
+              )}
             </CardHeader>
-            <CardContent className="flex flex-col gap-1.5 px-3 pb-3">
+            <CardContent className="flex flex-col gap-1.5 xl:gap-2.5 px-3 pb-3 xl:px-4 xl:pb-4">
               {kidTemplates.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Sem rotinas</p>
               ) : (
@@ -590,7 +592,7 @@ function KidsGrid({
                       type="button"
                       onClick={() => onToggle(routine.id)}
                       className={cn(
-                        'flex items-center gap-2.5 rounded-md border px-3 py-2 text-left text-sm font-medium transition-all active:scale-[0.98]',
+                        'flex items-center gap-2.5 rounded-md border px-3 py-2 xl:py-3 text-left text-sm xl:text-base font-medium transition-all active:scale-[0.98]',
                         done
                           ? 'border-emerald-500/50 bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                           : 'border-border bg-card hover:bg-muted/30 active:bg-muted/50'
@@ -598,11 +600,11 @@ function KidsGrid({
                     >
                       <span
                         className={cn(
-                          'grid h-6 w-6 shrink-0 place-items-center rounded-full border-2',
+                          'grid h-6 w-6 xl:h-8 xl:w-8 shrink-0 place-items-center rounded-full border-2',
                           done ? 'border-emerald-500 bg-white text-emerald-600 dark:bg-emerald-900' : 'border-border bg-muted text-muted-foreground'
                         )}
                       >
-                        <Check className="h-3.5 w-3.5" />
+                        <Check className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
                       </span>
                       <span className="truncate">{routine.title}</span>
                     </button>
@@ -610,7 +612,7 @@ function KidsGrid({
                 })
               )}
               {kidTemplates.length > 0 && routineOverflow > 0 ? (
-                <p className="text-[10px] text-muted-foreground">+{routineOverflow}</p>
+                <p className="text-xs text-muted-foreground">+{routineOverflow}</p>
               ) : null}
             </CardContent>
           </Card>
@@ -637,17 +639,17 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
   return (
     <div className="flex flex-col gap-3">
       <Card className="bg-card">
-        <CardHeader className="py-2.5 px-3">
+        <CardHeader className="py-2.5 px-3 xl:px-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Reposição</CardTitle>
-            <span className="text-xs text-muted-foreground">{replenish.length}</span>
+            <CardTitle className="text-base xl:text-lg">Reposição</CardTitle>
+            <span className="text-xs xl:text-sm text-muted-foreground">{replenish.length}</span>
           </div>
         </CardHeader>
-        <CardContent className="px-3 pb-3">
+        <CardContent className="px-3 pb-3 xl:px-4 xl:pb-4">
           {loading ? (
             <Skeleton className="h-4 w-full" />
           ) : replenish.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Nada pendente.</p>
+            <p className="text-sm text-muted-foreground">Nada pendente.</p>
           ) : (
             <div className="space-y-1.5">
               {replenish.slice(0, 8).map((item) => (
@@ -660,14 +662,14 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
                       : 'border-amber-400/60 bg-amber-50 text-amber-700 dark:border-amber-600/60 dark:bg-amber-950 dark:text-amber-400'
                   )}
                 >
-                  <span className="text-sm font-medium truncate">{item.title}</span>
-                  <Badge variant="outline" className="border-current text-[10px] px-1.5 py-0">
+                  <span className="text-sm xl:text-base font-medium truncate">{item.title}</span>
+                  <Badge variant="outline" className="border-current text-[10px] xl:text-xs px-1.5 py-0">
                     {item.urgency === 'now' ? 'Agora' : 'Breve'}
                   </Badge>
                 </div>
               ))}
               {replenish.length > 8 ? (
-                <p className="text-[10px] text-muted-foreground">+{replenish.length - 8} mais</p>
+                <p className="text-xs text-muted-foreground">+{replenish.length - 8} mais</p>
               ) : null}
             </div>
           )}
@@ -675,13 +677,13 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
       </Card>
 
       <Card className="bg-card">
-        <CardHeader className="py-2.5 px-3">
+        <CardHeader className="py-2.5 px-3 xl:px-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Homeschool</CardTitle>
-            <span className="text-xs text-muted-foreground">{kids.length} kids</span>
+            <CardTitle className="text-base xl:text-lg">Homeschool</CardTitle>
+            <span className="text-xs xl:text-sm text-muted-foreground">{kids.length} crianças</span>
           </div>
         </CardHeader>
-        <CardContent className="px-3 pb-3">
+        <CardContent className="px-3 pb-3 xl:px-4 xl:pb-4">
           {kids.map((kid: Person) => {
             const note = data?.homeschoolNotes.find((n: any) => n.kidPersonId === kid.id);
             const topics = note?.notes ?? [];
@@ -690,15 +692,15 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
             return (
               <div key={kid.id} className="mb-3 last:mb-0">
                 <div className="mb-1.5 flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: kid.color }} />
-                  <p className="text-sm font-medium">{kid.name}</p>
+                  <span className="h-2.5 w-2.5 xl:h-3.5 xl:w-3.5 rounded-full" style={{ backgroundColor: kid.color }} />
+                  <p className="text-sm xl:text-base font-medium">{kid.name}</p>
                 </div>
                 {loading ? (
                   <Skeleton className="h-3 w-full" />
                 ) : topics.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">—</p>
+                  <p className="text-sm text-muted-foreground">—</p>
                 ) : (
-                  <ul className="space-y-0.5 text-sm text-foreground">
+                  <ul className="space-y-0.5 text-sm xl:text-base text-foreground">
                     {topics.slice(0, 6).map((topic: string, idx: number) => (
                       <li key={idx} className="flex items-start gap-1.5">
                         <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" />
@@ -706,7 +708,7 @@ function RightColumn({ data, loading }: { data: any; loading: boolean }) {
                       </li>
                     ))}
                     {overflow > 0 ? (
-                      <li className="text-[10px] text-muted-foreground">+{overflow}</li>
+                      <li className="text-xs text-muted-foreground">+{overflow}</li>
                     ) : null}
                   </ul>
                 )}
