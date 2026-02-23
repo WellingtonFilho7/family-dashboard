@@ -77,31 +77,31 @@ export function ContentAdmin({
         <CardDescription>Versículo da semana e tópicos de homeschool.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
+        <div className="space-y-3">
           <p className="text-sm font-semibold">Foco da semana</p>
           <Input
-            placeholder="Texto"
+            placeholder="Texto do versículo ou foco"
             value={focusForm.text}
             onChange={(e) => setFocusForm({ ...focusForm, text: e.target.value })}
             disabled={disabled}
           />
           <Input
-            placeholder="Referência"
+            placeholder="Referência (ex: João 3:16)"
             value={focusForm.reference}
             onChange={(e) => setFocusForm({ ...focusForm, reference: e.target.value })}
             disabled={disabled}
           />
-          <Button onClick={saveFocus} disabled={disabled || loading}>
-            Salvar foco ativo
+          <Button onClick={saveFocus} disabled={disabled || loading} className="w-full">
+            Salvar foco
           </Button>
         </div>
 
         <Separator />
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           <p className="text-sm font-semibold">Homeschool</p>
           <select
-            className="h-11 rounded-lg border bg-background text-foreground px-3 text-sm"
+            className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-sm"
             value={noteKid}
             onChange={(e) => setNoteKid(e.target.value)}
             disabled={disabled}
@@ -130,13 +130,13 @@ export function ContentAdmin({
           )}
 
           <textarea
-            className="min-h-[140px] w-full rounded-lg border bg-background text-foreground px-3 py-2 text-sm"
+            className="min-h-[100px] w-full rounded-lg border bg-background text-foreground px-3 py-2 text-sm"
             placeholder="Uma linha por tópico"
             value={noteContent}
             onChange={(e) => setNoteContent(e.target.value)}
             disabled={disabled}
           />
-          <Button onClick={saveNotes} disabled={disabled || loading}>
+          <Button onClick={saveNotes} disabled={disabled || loading} className="w-full">
             Salvar notas
           </Button>
         </div>
