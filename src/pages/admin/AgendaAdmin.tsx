@@ -40,13 +40,13 @@ export function AgendaAdmin({
     title: '',
     dayOfWeek: 2,
     timeText: '',
-    personId: '',
+    personIds: [] as string[],
   });
   const [oneOffForm, setOneOffForm] = useState({
     title: '',
     date: '',
     timeText: '',
-    personId: '',
+    personIds: [] as string[],
   });
 
   const dayOptions = [
@@ -59,20 +59,24 @@ export function AgendaAdmin({
     { value: 7, label: 'Sábado' },
   ];
 
+  const togglePerson = (ids: string[], id: string) =>
+    ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
+
   const createRecurring = async () => {
     if (!requireAuth(hasSession)) return;
-    if (!recForm.title || !recForm.personId) return toast.error('Título e pessoa são obrigatórios');
+    if (!recForm.title || recForm.personIds.length === 0) return toast.error('Título e pelo menos uma pessoa são obrigatórios');
     try {
-      const { error } = await supabase!.from('recurring_items').insert({
+      const rows = recForm.personIds.map((pid) => ({
         title: recForm.title,
         day_of_week: recForm.dayOfWeek,
         time_text: recForm.timeText || null,
-        person_id: recForm.personId,
+        person_id: pid,
         is_private: false,
-      });
+      }));
+      const { error } = await supabase!.from('recurring_items').insert(rows);
       if (error) return toast.error(error.message);
-      toast.success('Evento recorrente criado');
-      setRecForm((prev) => ({ ...prev, title: '', timeText: '' }));
+      toast.success(rows.length > 1 ? `${rows.length} eventos criados` : 'Evento recorrente criado');
+      setRecForm((prev) => ({ ...prev, title: '', timeText: '', personIds: [] }));
       setShowRecForm(false);
       refresh();
     } catch {
@@ -82,20 +86,21 @@ export function AgendaAdmin({
 
   const createOneOff = async () => {
     if (!requireAuth(hasSession)) return;
-    if (!oneOffForm.title || !oneOffForm.personId || !oneOffForm.date) {
-      return toast.error('Título, pessoa e data são obrigatórios');
+    if (!oneOffForm.title || oneOffForm.personIds.length === 0 || !oneOffForm.date) {
+      return toast.error('Título, pelo menos uma pessoa e data são obrigatórios');
     }
     try {
-      const { error } = await supabase!.from('one_off_items').insert({
+      const rows = oneOffForm.personIds.map((pid) => ({
         title: oneOffForm.title,
         date: oneOffForm.date,
         time_text: oneOffForm.timeText || null,
-        person_id: oneOffForm.personId,
+        person_id: pid,
         is_private: false,
-      });
+      }));
+      const { error } = await supabase!.from('one_off_items').insert(rows);
       if (error) return toast.error(error.message);
-      toast.success('Evento pontual criado');
-      setOneOffForm((prev) => ({ ...prev, title: '', timeText: '' }));
+      toast.success(rows.length > 1 ? `${rows.length} eventos criados` : 'Evento pontual criado');
+      setOneOffForm((prev) => ({ ...prev, title: '', timeText: '', personIds: [] }));
       setShowOneOffForm(false);
       refresh();
     } catch {
@@ -147,15 +152,28 @@ export function AgendaAdmin({
             <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
               <Input placeholder="Título" value={recForm.title} onChange={(e) => setRecForm({ ...recForm, title: e.target.value })} disabled={disabled} />
               <div className="grid grid-cols-2 gap-3">
-                <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-sm" value={recForm.dayOfWeek} onChange={(e) => setRecForm({ ...recForm, dayOfWeek: Number(e.target.value) })} disabled={disabled}>
+                <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base" value={recForm.dayOfWeek} onChange={(e) => setRecForm({ ...recForm, dayOfWeek: Number(e.target.value) })} disabled={disabled}>
                   {dayOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
                 <Input placeholder="Hora (ex: 08:30)" value={recForm.timeText} onChange={(e) => setRecForm({ ...recForm, timeText: e.target.value })} disabled={disabled} />
               </div>
-              <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-sm" value={recForm.personId} onChange={(e) => setRecForm({ ...recForm, personId: e.target.value })} disabled={disabled}>
-                <option value="">Selecione a pessoa</option>
-                {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Pessoas</p>
+                <div className="flex flex-wrap gap-2">
+                  {people.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => setRecForm({ ...recForm, personIds: togglePerson(recForm.personIds, p.id) })}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${recForm.personIds.includes(p.id) ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground'}`}
+                    >
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <Button onClick={createRecurring} disabled={disabled || loading} className="w-full">Criar recorrente</Button>
             </div>
           )}
@@ -212,10 +230,23 @@ export function AgendaAdmin({
                 <Input type="date" value={oneOffForm.date} onChange={(e) => setOneOffForm({ ...oneOffForm, date: e.target.value })} disabled={disabled} />
                 <Input placeholder="Hora (ex: 14:00)" value={oneOffForm.timeText} onChange={(e) => setOneOffForm({ ...oneOffForm, timeText: e.target.value })} disabled={disabled} />
               </div>
-              <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-sm" value={oneOffForm.personId} onChange={(e) => setOneOffForm({ ...oneOffForm, personId: e.target.value })} disabled={disabled}>
-                <option value="">Selecione a pessoa</option>
-                {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Pessoas</p>
+                <div className="flex flex-wrap gap-2">
+                  {people.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => setOneOffForm({ ...oneOffForm, personIds: togglePerson(oneOffForm.personIds, p.id) })}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${oneOffForm.personIds.includes(p.id) ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground'}`}
+                    >
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <Button onClick={createOneOff} disabled={disabled || loading} className="w-full">Criar pontual</Button>
             </div>
           )}

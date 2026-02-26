@@ -83,7 +83,7 @@ export function ReplenishAdmin({
           <>
             <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
               <Input placeholder="Ex: Leite integral" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} disabled={disabled} />
-              <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-sm" value={form.urgency} onChange={(e) => setForm({ ...form, urgency: e.target.value })} disabled={disabled}>
+              <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base" value={form.urgency} onChange={(e) => setForm({ ...form, urgency: e.target.value })} disabled={disabled}>
                 <option value="now">Agora</option>
                 <option value="soon">Em breve</option>
               </select>
