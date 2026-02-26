@@ -142,7 +142,7 @@ export function PeopleAdmin({
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Tipo</label>
                   <select
-                    className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-sm"
+                    className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base"
                     value={form.type}
                     onChange={(e) => setForm({ ...form, type: e.target.value })}
                     disabled={disabled}

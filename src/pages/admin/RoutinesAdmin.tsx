@@ -93,7 +93,7 @@ export function RoutinesAdmin({
           <>
             <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
               <Input placeholder="Ex: Escovar os dentes" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} disabled={disabled} />
-              <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-sm" value={form.personId} onChange={(e) => setForm({ ...form, personId: e.target.value })} disabled={disabled}>
+              <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base" value={form.personId} onChange={(e) => setForm({ ...form, personId: e.target.value })} disabled={disabled}>
                 {kids.map((kid) => <option key={kid.id} value={kid.id}>{kid.name}</option>)}
               </select>
               <Button onClick={createTemplate} disabled={disabled || loading} className="w-full">Criar rotina</Button>

@@ -101,7 +101,7 @@ export function ContentAdmin({
         <div className="space-y-3">
           <p className="text-sm font-semibold">Homeschool</p>
           <select
-            className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-sm"
+            className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base"
             value={noteKid}
             onChange={(e) => setNoteKid(e.target.value)}
             disabled={disabled}
