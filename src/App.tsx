@@ -529,8 +529,8 @@ function CalendarGrid({
   return (
     <div
       className={desktopOverride
-        ? 'flex flex-1 gap-2 overflow-hidden'
-        : 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:flex xl:flex-1 xl:gap-2 xl:overflow-hidden'}
+        ? 'flex flex-1 gap-2 overflow-hidden xl:h-full'
+        : 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:flex xl:h-full xl:flex-1 xl:gap-2 xl:overflow-hidden'}
     >
       {days.map(({ date, items }) => {
         const isToday = isSameDay(date, todayInWeek);
@@ -570,7 +570,7 @@ function CalendarGrid({
               desktopOverride
                 ? (isSelected ? 'flex-[3]' : 'flex-[1] overflow-hidden')
                 : (isSelected ? 'xl:flex-[3]' : 'xl:flex-[1] xl:overflow-hidden'),
-              'xl:min-w-0'
+              'xl:min-w-0 xl:h-full'
             )}
             role="button"
             tabIndex={0}
@@ -682,13 +682,44 @@ function CalendarGrid({
                         };
                       });
 
-                      const requiredHeight = Math.max(
-                        TIMELINE_HEIGHT_PX,
-                        ...timedLayouts.map((layout) => layout.topPx + layout.groupHeight + 4)
-                      );
+                      const positionedLayouts = timedLayouts.map((layout) => ({ ...layout, topPx: layout.topPx }));
+                      const betweenGroupsGap = 4;
+                      let cursorBottom = 0;
+                      positionedLayouts.forEach((layout) => {
+                        const minTop = cursorBottom > 0 ? cursorBottom + betweenGroupsGap : 0;
+                        layout.topPx = Math.max(layout.topPx, minTop);
+                        cursorBottom = layout.topPx + layout.groupHeight;
+                      });
+
+                      const lastBottom = positionedLayouts.length
+                        ? positionedLayouts[positionedLayouts.length - 1].topPx +
+                          positionedLayouts[positionedLayouts.length - 1].groupHeight
+                        : TIMELINE_HEIGHT_PX;
+                      const overflowDelta = Math.max(0, lastBottom - TIMELINE_HEIGHT_PX);
+                      const canShiftWithoutScroll =
+                        positionedLayouts.length === 0 ||
+                        positionedLayouts[0].topPx - overflowDelta >= 0;
+
+                      if (overflowDelta > 0 && canShiftWithoutScroll) {
+                        positionedLayouts.forEach((layout) => {
+                          layout.topPx -= overflowDelta;
+                        });
+                      }
+
+                      const lastBottomAfterShift = positionedLayouts.length
+                        ? positionedLayouts[positionedLayouts.length - 1].topPx +
+                          positionedLayouts[positionedLayouts.length - 1].groupHeight
+                        : TIMELINE_HEIGHT_PX;
+                      const needsScroll = lastBottomAfterShift > TIMELINE_HEIGHT_PX;
+                      const requiredHeight = needsScroll
+                        ? Math.max(TIMELINE_HEIGHT_PX, lastBottomAfterShift + 8)
+                        : TIMELINE_HEIGHT_PX;
 
                       return (
-                        <div className="h-[300px] overflow-y-auto rounded-md border bg-muted/20">
+                        <div className={cn(
+                          'h-[300px] rounded-md border bg-muted/20',
+                          needsScroll ? 'overflow-y-auto' : 'overflow-hidden'
+                        )}>
                           <div className="relative min-h-[300px]" style={{ height: `${requiredHeight}px` }}>
                             <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-border/50" />
                             <div className="pointer-events-none absolute inset-x-0 bottom-0 border-t border-dashed border-border/50" />
@@ -699,12 +730,12 @@ function CalendarGrid({
                               22:00
                             </p>
 
-                            {timedLayouts.length === 0 ? (
+                            {positionedLayouts.length === 0 ? (
                               <p className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                                 Sem eventos com horário
                               </p>
                             ) : (
-                              timedLayouts.map((layout) => (
+                              positionedLayouts.map((layout) => (
                                 <div
                                   key={`timed-group-${layout.groupIndex}-${layout.groupHour}`}
                                   className="absolute left-2 right-2 space-y-1.5"
