@@ -9,6 +9,12 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -25,6 +31,17 @@ const dayNames: Record<number, string> = {
   1: 'Domingo', 2: 'Segunda', 3: 'Terça', 4: 'Quarta', 5: 'Quinta', 6: 'Sexta', 7: 'Sábado',
 };
 
+type AgendaEditForm = {
+  table: 'recurring_items' | 'one_off_items';
+  id: string;
+  title: string;
+  dayOfWeek: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+  personIds: string[];
+};
+
 export function AgendaAdmin({
   people,
   recurring,
@@ -36,6 +53,7 @@ export function AgendaAdmin({
 }: AdminSectionProps & { people: Person[]; recurring: RecurringItem[]; oneOff: OneOffItem[] }) {
   const [showRecForm, setShowRecForm] = useState(false);
   const [showOneOffForm, setShowOneOffForm] = useState(false);
+  const [editForm, setEditForm] = useState<AgendaEditForm | null>(null);
   const [recForm, setRecForm] = useState({
     title: '',
     dayOfWeek: 2,
@@ -63,6 +81,8 @@ export function AgendaAdmin({
 
   const togglePerson = (ids: string[], id: string) =>
     ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
+  const personIdsFromItem = (item: { personId: string; personIds?: string[] }) =>
+    item.personIds?.length ? item.personIds : item.personId ? [item.personId] : [];
 
   const normalizeTimeText = (rawValue: string): string | null => {
     const value = rawValue.trim().toLowerCase();
@@ -85,6 +105,80 @@ export function AgendaAdmin({
   };
 
   const isEndAfterStart = (startTime: string, endTime: string) => endTime > startTime;
+
+  const openRecurringEditor = (item: RecurringItem) => {
+    setEditForm({
+      table: 'recurring_items',
+      id: item.id,
+      title: item.title,
+      dayOfWeek: item.dayOfWeek,
+      date: '',
+      startTime: item.startTime ?? '',
+      endTime: item.endTime ?? '',
+      personIds: personIdsFromItem(item),
+    });
+  };
+
+  const openOneOffEditor = (item: OneOffItem) => {
+    setEditForm({
+      table: 'one_off_items',
+      id: item.id,
+      title: item.title,
+      dayOfWeek: 1,
+      date: item.date,
+      startTime: item.startTime ?? '',
+      endTime: item.endTime ?? '',
+      personIds: personIdsFromItem(item),
+    });
+  };
+
+  const saveEditedItem = async () => {
+    if (!editForm) return;
+    if (!requireAuth(hasSession)) return;
+    if (!editForm.title.trim() || editForm.personIds.length === 0) {
+      return toast.error('Título e pelo menos uma pessoa são obrigatórios');
+    }
+    if (editForm.table === 'one_off_items' && !editForm.date) {
+      return toast.error('Data é obrigatória para evento pontual');
+    }
+
+    const normalizedStartTime = normalizeTimeText(editForm.startTime);
+    const normalizedEndTime = normalizeTimeText(editForm.endTime);
+    if (editForm.startTime.trim() && !normalizedStartTime) {
+      return toast.error('Hora inicial inválida. Use o formato HH:mm.');
+    }
+    if (editForm.endTime.trim() && !normalizedEndTime) {
+      return toast.error('Hora final inválida. Use o formato HH:mm.');
+    }
+    if (normalizedEndTime && !normalizedStartTime) {
+      return toast.error('Informe a hora inicial para usar hora final.');
+    }
+    if (normalizedStartTime && normalizedEndTime && !isEndAfterStart(normalizedStartTime, normalizedEndTime)) {
+      return toast.error('A hora final deve ser depois da hora inicial.');
+    }
+
+    const payload = {
+      title: editForm.title.trim(),
+      time_text: buildTimeLabel(normalizedStartTime, normalizedEndTime),
+      start_time: normalizedStartTime,
+      end_time: normalizedEndTime,
+      person_id: editForm.personIds[0],
+      person_ids: editForm.personIds,
+      ...(editForm.table === 'recurring_items'
+        ? { day_of_week: editForm.dayOfWeek }
+        : { date: editForm.date }),
+    };
+
+    const { error } = await supabase!
+      .from(editForm.table)
+      .update(payload)
+      .eq('id', editForm.id);
+    if (error) return toast.error(error.message);
+
+    toast.success('Evento atualizado');
+    setEditForm(null);
+    refresh();
+  };
 
   const createRecurring = async () => {
     if (!requireAuth(hasSession)) return;
@@ -193,9 +287,6 @@ export function AgendaAdmin({
     else { toast.success('Removido'); refresh(); }
   };
 
-  const personIdsFromItem = (item: { personId: string; personIds?: string[] }) =>
-    item.personIds?.length ? item.personIds : item.personId ? [item.personId] : [];
-
   const personLabel = (ids: string[]) => {
     const names = ids.map((id) => people.find((p) => p.id === id)?.name ?? 'Pessoa');
     return names.join(' + ');
@@ -302,6 +393,9 @@ export function AgendaAdmin({
                         <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Mais ações"><MoreVertical className="h-4 w-4" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openRecurringEditor(item)}>
+                          Editar evento
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => togglePrivacy('recurring_items', item.id, item.isPrivate ?? false)}>
                           {item.isPrivate ? 'Tornar público' : 'Tornar privado'}
                         </DropdownMenuItem>
@@ -405,6 +499,9 @@ export function AgendaAdmin({
                         <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Mais ações"><MoreVertical className="h-4 w-4" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openOneOffEditor(item)}>
+                          Editar evento
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => togglePrivacy('one_off_items', item.id, item.isPrivate ?? false)}>
                           {item.isPrivate ? 'Tornar público' : 'Tornar privado'}
                         </DropdownMenuItem>
@@ -417,6 +514,110 @@ export function AgendaAdmin({
             </div>
           )}
         </div>
+
+        <Dialog open={Boolean(editForm)} onOpenChange={(open) => !open && setEditForm(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar evento</DialogTitle>
+              <DialogDescription>
+                Atualize título, horário e participantes do evento.
+              </DialogDescription>
+            </DialogHeader>
+
+            {editForm ? (
+              <div className="space-y-3">
+                <Input
+                  placeholder="Título"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm((prev) => (prev ? { ...prev, title: e.target.value } : prev))}
+                  disabled={disabled}
+                />
+
+                {editForm.table === 'recurring_items' ? (
+                  <select
+                    className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base"
+                    value={editForm.dayOfWeek}
+                    onChange={(e) =>
+                      setEditForm((prev) =>
+                        prev ? { ...prev, dayOfWeek: Number(e.target.value) } : prev
+                      )
+                    }
+                    disabled={disabled}
+                  >
+                    {dayOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <Input
+                    type="date"
+                    value={editForm.date}
+                    onChange={(e) => setEditForm((prev) => (prev ? { ...prev, date: e.target.value } : prev))}
+                    disabled={disabled}
+                  />
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    type="time"
+                    step={60}
+                    min="00:00"
+                    max="23:59"
+                    value={editForm.startTime}
+                    onChange={(e) =>
+                      setEditForm((prev) => (prev ? { ...prev, startTime: e.target.value } : prev))
+                    }
+                    disabled={disabled}
+                  />
+                  <Input
+                    type="time"
+                    step={60}
+                    min="00:00"
+                    max="23:59"
+                    value={editForm.endTime}
+                    onChange={(e) =>
+                      setEditForm((prev) => (prev ? { ...prev, endTime: e.target.value } : prev))
+                    }
+                    disabled={disabled}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Pessoas</p>
+                  <div className="flex flex-wrap gap-2">
+                    {people.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() =>
+                          setEditForm((prev) =>
+                            prev ? { ...prev, personIds: togglePerson(prev.personIds, p.id) } : prev
+                          )
+                        }
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${editForm.personIds.includes(p.id) ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground'}`}
+                      >
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditForm(null)} disabled={disabled}>
+                Cancelar
+              </Button>
+              <Button onClick={saveEditedItem} disabled={disabled || loading}>
+                Salvar alterações
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
