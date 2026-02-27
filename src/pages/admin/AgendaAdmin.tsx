@@ -315,7 +315,7 @@ export function AgendaAdmin({
           {showRecForm && (
             <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
               <Input placeholder="Título" value={recForm.title} onChange={(e) => setRecForm({ ...recForm, title: e.target.value })} disabled={disabled} />
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base" value={recForm.dayOfWeek} onChange={(e) => setRecForm({ ...recForm, dayOfWeek: Number(e.target.value) })} disabled={disabled}>
                   {dayOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
@@ -424,7 +424,7 @@ export function AgendaAdmin({
           {showOneOffForm && (
             <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
               <Input placeholder="Título" value={oneOffForm.title} onChange={(e) => setOneOffForm({ ...oneOffForm, title: e.target.value })} disabled={disabled} />
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <Input type="date" value={oneOffForm.date} onChange={(e) => setOneOffForm({ ...oneOffForm, date: e.target.value })} disabled={disabled} />
                 <Input
                   type="time"
@@ -559,7 +559,7 @@ export function AgendaAdmin({
                   />
                 )}
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Input
                     type="time"
                     step={60}

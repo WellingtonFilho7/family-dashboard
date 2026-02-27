@@ -732,9 +732,10 @@ function CalendarGrid({
                           0,
                           Math.min(rawTopPercent, 100 - heightPercent)
                         );
+                        const laneWidthPercent = 100 / entry.laneCount;
                         const laneGapPercent = entry.laneCount > 1 ? 1 : 0;
-                        const widthPercent = Math.max(2, (100 / entry.laneCount) - laneGapPercent);
-                        const leftPercent = (entry.lane * 100) / entry.laneCount;
+                        const widthPercent = Math.max(2, laneWidthPercent - laneGapPercent);
+                        const leftPercent = (entry.lane * laneWidthPercent) + laneGapPercent / 2;
 
                         return {
                           id: `${entry.item.id}-${idx}`,
@@ -765,16 +766,15 @@ function CalendarGrid({
                             timedLayouts.map((layout) => (
                               <div
                                 key={layout.id}
-                                className="absolute rounded-md border bg-card/95 px-2 py-1 shadow-sm"
+                                className="absolute overflow-hidden rounded-md border bg-card/95 px-2 py-1 shadow-sm"
                                 style={{
                                   top: `${layout.topPercent}%`,
                                   left: `${layout.leftPercent}%`,
                                   width: `${layout.widthPercent}%`,
-                                  minHeight: `${MIN_EVENT_HEIGHT_PERCENT}%`,
-                                  height: `${layout.heightPercent}%`,
+                                  height: `max(${layout.heightPercent}%, 34px)`,
                                 }}
                               >
-                                <div className="flex items-center gap-1.5 min-w-0">
+                                <div className="flex items-start gap-1.5 min-w-0">
                                   <div className="flex shrink-0 items-center gap-1">
                                     {resolveItemColors(layout.item).map((color, index) => (
                                       <span
@@ -784,12 +784,16 @@ function CalendarGrid({
                                       />
                                     ))}
                                   </div>
-                                  <p className="truncate text-xs xl:text-sm">
-                                    <span className="font-medium">{layout.item.title}</span>
+                                  <div className="min-w-0">
+                                    <p className="truncate text-xs font-medium leading-tight xl:text-sm">
+                                      {layout.item.title}
+                                    </p>
                                     {getItemTimeLabel(layout.item) ? (
-                                      <span className="text-muted-foreground"> · {getItemTimeLabel(layout.item)}</span>
+                                      <p className="mt-0.5 truncate text-[11px] leading-none text-muted-foreground tabular-nums">
+                                        {getItemTimeLabel(layout.item)}
+                                      </p>
                                     ) : null}
-                                  </p>
+                                  </div>
                                 </div>
                               </div>
                             ))
