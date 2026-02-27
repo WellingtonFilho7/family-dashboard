@@ -66,13 +66,11 @@ export function AgendaAdmin({
     const value = rawValue.trim().toLowerCase();
     if (!value) return null;
 
-    const match =
-      value.match(/(?:^|[^0-9])(\d{1,2})\s*(?:h|:)\s*(\d{0,2})(?:\b|[^0-9])/) ??
-      value.match(/^(\d{1,2})$/);
+    const match = value.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
     if (!match) return null;
 
     const hour = Number.parseInt(match[1], 10);
-    const minute = match[2] ? Number.parseInt(match[2], 10) : 0;
+    const minute = Number.parseInt(match[2], 10);
     if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
     if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
 
@@ -84,7 +82,7 @@ export function AgendaAdmin({
     if (!recForm.title || recForm.personIds.length === 0) return toast.error('Título e pelo menos uma pessoa são obrigatórios');
     const normalizedTime = normalizeTimeText(recForm.timeText);
     if (recForm.timeText.trim() && !normalizedTime) {
-      return toast.error('Hora inválida. Use formatos como 09:30, 9h ou 9h30.');
+      return toast.error('Hora inválida. Use o formato HH:mm.');
     }
     try {
       const payload = {
@@ -113,7 +111,7 @@ export function AgendaAdmin({
     }
     const normalizedTime = normalizeTimeText(oneOffForm.timeText);
     if (oneOffForm.timeText.trim() && !normalizedTime) {
-      return toast.error('Hora inválida. Use formatos como 14:00, 14h ou 14h30.');
+      return toast.error('Hora inválida. Use o formato HH:mm.');
     }
     try {
       const payload = {
@@ -188,7 +186,15 @@ export function AgendaAdmin({
                 <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base" value={recForm.dayOfWeek} onChange={(e) => setRecForm({ ...recForm, dayOfWeek: Number(e.target.value) })} disabled={disabled}>
                   {dayOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
-                <Input placeholder="Hora (ex: 08:30)" value={recForm.timeText} onChange={(e) => setRecForm({ ...recForm, timeText: e.target.value })} disabled={disabled} />
+                <Input
+                  type="time"
+                  step={60}
+                  min="00:00"
+                  max="23:59"
+                  value={recForm.timeText}
+                  onChange={(e) => setRecForm({ ...recForm, timeText: e.target.value })}
+                  disabled={disabled}
+                />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium">Pessoas</p>
@@ -275,7 +281,15 @@ export function AgendaAdmin({
               <Input placeholder="Título" value={oneOffForm.title} onChange={(e) => setOneOffForm({ ...oneOffForm, title: e.target.value })} disabled={disabled} />
               <div className="grid grid-cols-2 gap-3">
                 <Input type="date" value={oneOffForm.date} onChange={(e) => setOneOffForm({ ...oneOffForm, date: e.target.value })} disabled={disabled} />
-                <Input placeholder="Hora (ex: 14:00)" value={oneOffForm.timeText} onChange={(e) => setOneOffForm({ ...oneOffForm, timeText: e.target.value })} disabled={disabled} />
+                <Input
+                  type="time"
+                  step={60}
+                  min="00:00"
+                  max="23:59"
+                  value={oneOffForm.timeText}
+                  onChange={(e) => setOneOffForm({ ...oneOffForm, timeText: e.target.value })}
+                  disabled={disabled}
+                />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium">Pessoas</p>
