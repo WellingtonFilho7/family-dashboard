@@ -231,6 +231,8 @@ export function useKioskData(
         id: item.id,
         title: item.title,
         timeText: item.timeText,
+        startTime: item.startTime ?? null,
+        endTime: item.endTime ?? null,
         date: targetDate,
         personIds,
         personColors: resolvePersonColors(personIds),
@@ -245,6 +247,8 @@ export function useKioskData(
           id: item.id,
           title: item.title,
           timeText: item.timeText,
+          startTime: item.startTime ?? null,
+          endTime: item.endTime ?? null,
           date,
           personIds,
           personColors: resolvePersonColors(personIds),
@@ -454,6 +458,13 @@ const toPerson = (row: any): Person => ({
   sortOrder: row.sort_order ?? 0,
 });
 
+const normalizeDbTime = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const match = value.trim().match(/^([01]?\d|2[0-3]):([0-5]\d)/);
+  if (!match) return null;
+  return `${match[1].padStart(2, '0')}:${match[2]}`;
+};
+
 const toRecurring = (row: any): RecurringItem => {
   const rowPersonIds = Array.isArray(row.person_ids)
     ? row.person_ids.filter(Boolean)
@@ -464,12 +475,17 @@ const toRecurring = (row: any): RecurringItem => {
       ? [row.person_id]
       : [];
   const personId = row.person_id ?? personIds[0] ?? '';
+  const startTime = normalizeDbTime(row.start_time);
+  const endTime = normalizeDbTime(row.end_time);
+  const timeText = row.time_text ?? (startTime && endTime ? `${startTime}–${endTime}` : startTime ?? '');
 
   return {
     id: row.id,
     title: row.title,
     dayOfWeek: Number(row.day_of_week ?? 1),
-    timeText: row.time_text ?? '',
+    timeText,
+    startTime,
+    endTime,
     personId,
     personIds,
     isPrivate: Boolean(row.is_private),
@@ -486,12 +502,17 @@ const toOneOff = (row: any): OneOffItem => {
       ? [row.person_id]
       : [];
   const personId = row.person_id ?? personIds[0] ?? '';
+  const startTime = normalizeDbTime(row.start_time);
+  const endTime = normalizeDbTime(row.end_time);
+  const timeText = row.time_text ?? (startTime && endTime ? `${startTime}–${endTime}` : startTime ?? '');
 
   return {
     id: row.id,
     title: row.title,
     date: row.date,
-    timeText: row.time_text ?? '',
+    timeText,
+    startTime,
+    endTime,
     personId,
     personIds,
     isPrivate: Boolean(row.is_private),

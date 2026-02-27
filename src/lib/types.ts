@@ -14,6 +14,8 @@ export interface RecurringItem {
   title: string;
   dayOfWeek: number; // 1 = Sunday ... 7 = Saturday
   timeText: string;
+  startTime?: string | null;
+  endTime?: string | null;
   personId: string;
   personIds?: string[];
   isPrivate?: boolean;
@@ -24,6 +26,8 @@ export interface OneOffItem {
   title: string;
   date: string; // ISO date
   timeText: string;
+  startTime?: string | null;
+  endTime?: string | null;
   personId: string;
   personIds?: string[];
   isPrivate?: boolean;
@@ -33,6 +37,8 @@ export interface CalendarItem {
   id: string;
   title: string;
   timeText: string;
+  startTime: string | null;
+  endTime: string | null;
   date: Date;
   personIds: string[];
   personColors: string[];

@@ -39,13 +39,15 @@ export function AgendaAdmin({
   const [recForm, setRecForm] = useState({
     title: '',
     dayOfWeek: 2,
-    timeText: '',
+    startTime: '',
+    endTime: '',
     personIds: [] as string[],
   });
   const [oneOffForm, setOneOffForm] = useState({
     title: '',
     date: '',
-    timeText: '',
+    startTime: '',
+    endTime: '',
     personIds: [] as string[],
   });
 
@@ -77,18 +79,40 @@ export function AgendaAdmin({
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
   };
 
+  const buildTimeLabel = (startTime: string | null, endTime: string | null): string | null => {
+    if (startTime && endTime) return `${startTime}–${endTime}`;
+    return startTime ?? null;
+  };
+
+  const isEndAfterStart = (startTime: string, endTime: string) => endTime > startTime;
+
   const createRecurring = async () => {
     if (!requireAuth(hasSession)) return;
     if (!recForm.title || recForm.personIds.length === 0) return toast.error('Título e pelo menos uma pessoa são obrigatórios');
-    const normalizedTime = normalizeTimeText(recForm.timeText);
-    if (recForm.timeText.trim() && !normalizedTime) {
-      return toast.error('Hora inválida. Use o formato HH:mm.');
+    const normalizedStartTime = normalizeTimeText(recForm.startTime);
+    const normalizedEndTime = normalizeTimeText(recForm.endTime);
+
+    if (recForm.startTime.trim() && !normalizedStartTime) {
+      return toast.error('Hora inicial inválida. Use o formato HH:mm.');
     }
+    if (recForm.endTime.trim() && !normalizedEndTime) {
+      return toast.error('Hora final inválida. Use o formato HH:mm.');
+    }
+    if (normalizedEndTime && !normalizedStartTime) {
+      return toast.error('Informe a hora inicial para usar hora final.');
+    }
+    if (normalizedStartTime && normalizedEndTime && !isEndAfterStart(normalizedStartTime, normalizedEndTime)) {
+      return toast.error('A hora final deve ser depois da hora inicial.');
+    }
+
+    const timeLabel = buildTimeLabel(normalizedStartTime, normalizedEndTime);
     try {
       const payload = {
         title: recForm.title,
         day_of_week: recForm.dayOfWeek,
-        time_text: normalizedTime,
+        time_text: timeLabel,
+        start_time: normalizedStartTime,
+        end_time: normalizedEndTime,
         person_id: recForm.personIds[0],
         person_ids: recForm.personIds,
         is_private: false,
@@ -96,7 +120,7 @@ export function AgendaAdmin({
       const { error } = await supabase!.from('recurring_items').insert(payload);
       if (error) return toast.error(error.message);
       toast.success('Evento recorrente criado');
-      setRecForm((prev) => ({ ...prev, title: '', timeText: '', personIds: [] }));
+      setRecForm((prev) => ({ ...prev, title: '', startTime: '', endTime: '', personIds: [] }));
       setShowRecForm(false);
       refresh();
     } catch {
@@ -109,15 +133,30 @@ export function AgendaAdmin({
     if (!oneOffForm.title || oneOffForm.personIds.length === 0 || !oneOffForm.date) {
       return toast.error('Título, pelo menos uma pessoa e data são obrigatórios');
     }
-    const normalizedTime = normalizeTimeText(oneOffForm.timeText);
-    if (oneOffForm.timeText.trim() && !normalizedTime) {
-      return toast.error('Hora inválida. Use o formato HH:mm.');
+    const normalizedStartTime = normalizeTimeText(oneOffForm.startTime);
+    const normalizedEndTime = normalizeTimeText(oneOffForm.endTime);
+
+    if (oneOffForm.startTime.trim() && !normalizedStartTime) {
+      return toast.error('Hora inicial inválida. Use o formato HH:mm.');
     }
+    if (oneOffForm.endTime.trim() && !normalizedEndTime) {
+      return toast.error('Hora final inválida. Use o formato HH:mm.');
+    }
+    if (normalizedEndTime && !normalizedStartTime) {
+      return toast.error('Informe a hora inicial para usar hora final.');
+    }
+    if (normalizedStartTime && normalizedEndTime && !isEndAfterStart(normalizedStartTime, normalizedEndTime)) {
+      return toast.error('A hora final deve ser depois da hora inicial.');
+    }
+
+    const timeLabel = buildTimeLabel(normalizedStartTime, normalizedEndTime);
     try {
       const payload = {
         title: oneOffForm.title,
         date: oneOffForm.date,
-        time_text: normalizedTime,
+        time_text: timeLabel,
+        start_time: normalizedStartTime,
+        end_time: normalizedEndTime,
         person_id: oneOffForm.personIds[0],
         person_ids: oneOffForm.personIds,
         is_private: false,
@@ -125,7 +164,7 @@ export function AgendaAdmin({
       const { error } = await supabase!.from('one_off_items').insert(payload);
       if (error) return toast.error(error.message);
       toast.success('Evento pontual criado');
-      setOneOffForm((prev) => ({ ...prev, title: '', timeText: '', personIds: [] }));
+      setOneOffForm((prev) => ({ ...prev, title: '', startTime: '', endTime: '', personIds: [] }));
       setShowOneOffForm(false);
       refresh();
     } catch {
@@ -162,6 +201,9 @@ export function AgendaAdmin({
     return names.join(' + ');
   };
 
+  const eventTimeLabel = (item: { startTime?: string | null; endTime?: string | null; timeText?: string | null }) =>
+    buildTimeLabel(item.startTime ?? null, item.endTime ?? null) ?? item.timeText ?? null;
+
   return (
     <Card>
       <CardHeader>
@@ -182,7 +224,7 @@ export function AgendaAdmin({
           {showRecForm && (
             <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
               <Input placeholder="Título" value={recForm.title} onChange={(e) => setRecForm({ ...recForm, title: e.target.value })} disabled={disabled} />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base" value={recForm.dayOfWeek} onChange={(e) => setRecForm({ ...recForm, dayOfWeek: Number(e.target.value) })} disabled={disabled}>
                   {dayOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
@@ -191,8 +233,17 @@ export function AgendaAdmin({
                   step={60}
                   min="00:00"
                   max="23:59"
-                  value={recForm.timeText}
-                  onChange={(e) => setRecForm({ ...recForm, timeText: e.target.value })}
+                  value={recForm.startTime}
+                  onChange={(e) => setRecForm({ ...recForm, startTime: e.target.value })}
+                  disabled={disabled}
+                />
+                <Input
+                  type="time"
+                  step={60}
+                  min="00:00"
+                  max="23:59"
+                  value={recForm.endTime}
+                  onChange={(e) => setRecForm({ ...recForm, endTime: e.target.value })}
                   disabled={disabled}
                 />
               </div>
@@ -240,7 +291,7 @@ export function AgendaAdmin({
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {dayNames[item.dayOfWeek] ?? `Dia ${item.dayOfWeek}`}
-                        {item.timeText ? ` • ${item.timeText}` : ''} • {personLabel(personIdsFromItem(item))}
+                        {eventTimeLabel(item) ? ` • ${eventTimeLabel(item)}` : ''} • {personLabel(personIdsFromItem(item))}
                         {item.isPrivate ? ' • privado' : ''}
                       </p>
                     </div>
@@ -279,15 +330,24 @@ export function AgendaAdmin({
           {showOneOffForm && (
             <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
               <Input placeholder="Título" value={oneOffForm.title} onChange={(e) => setOneOffForm({ ...oneOffForm, title: e.target.value })} disabled={disabled} />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <Input type="date" value={oneOffForm.date} onChange={(e) => setOneOffForm({ ...oneOffForm, date: e.target.value })} disabled={disabled} />
                 <Input
                   type="time"
                   step={60}
                   min="00:00"
                   max="23:59"
-                  value={oneOffForm.timeText}
-                  onChange={(e) => setOneOffForm({ ...oneOffForm, timeText: e.target.value })}
+                  value={oneOffForm.startTime}
+                  onChange={(e) => setOneOffForm({ ...oneOffForm, startTime: e.target.value })}
+                  disabled={disabled}
+                />
+                <Input
+                  type="time"
+                  step={60}
+                  min="00:00"
+                  max="23:59"
+                  value={oneOffForm.endTime}
+                  onChange={(e) => setOneOffForm({ ...oneOffForm, endTime: e.target.value })}
                   disabled={disabled}
                 />
               </div>
@@ -334,7 +394,7 @@ export function AgendaAdmin({
                         })}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {item.date}{item.timeText ? ` • ${item.timeText}` : ''} • {personLabel(personIdsFromItem(item))}
+                        {item.date}{eventTimeLabel(item) ? ` • ${eventTimeLabel(item)}` : ''} • {personLabel(personIdsFromItem(item))}
                         {item.isPrivate ? ' • privado' : ''}
                       </p>
                     </div>

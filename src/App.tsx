@@ -449,9 +449,8 @@ const CALENDAR_AUTO_RESET_MS = 60_000;
 const TIMELINE_START_HOUR = 7;
 const TIMELINE_END_HOUR = 22;
 const TIMELINE_VISIBLE_HOURS = TIMELINE_END_HOUR - TIMELINE_START_HOUR;
-const TIMELINE_HEIGHT_PX = 300;
-const TIMELINE_ITEM_HEIGHT_PX = 34;
-const TIMELINE_STACK_GAP_PX = 6;
+const DEFAULT_EVENT_DURATION_HOURS = 1;
+const MIN_EVENT_HEIGHT_PERCENT = 3;
 
 function parseHour(timeText: string | null): number | null {
   if (!timeText) return null;
@@ -468,6 +467,37 @@ function parseHour(timeText: string | null): number | null {
   if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
 
   return hour + minute / 60;
+}
+
+function getItemTimeLabel(item: Pick<CalendarItem, 'startTime' | 'endTime' | 'timeText'>): string | null {
+  if (item.startTime && item.endTime) return `${item.startTime}–${item.endTime}`;
+  if (item.startTime) return item.startTime;
+  if (item.timeText) return item.timeText;
+  return null;
+}
+
+function getTimelineWindow(item: CalendarItem): { startHour: number; endHour: number } | null {
+  const parsedStart = parseHour(item.startTime ?? item.timeText ?? null);
+  if (parsedStart === null) return null;
+
+  const parsedEnd = parseHour(item.endTime ?? null);
+  const rawEnd = parsedEnd !== null && parsedEnd > parsedStart
+    ? parsedEnd
+    : parsedStart + DEFAULT_EVENT_DURATION_HOURS;
+
+  if (rawEnd <= TIMELINE_START_HOUR || parsedStart >= TIMELINE_END_HOUR) {
+    return null;
+  }
+
+  const startHour = Math.max(TIMELINE_START_HOUR, Math.min(TIMELINE_END_HOUR, parsedStart));
+  let endHour = Math.max(TIMELINE_START_HOUR, Math.min(TIMELINE_END_HOUR, rawEnd));
+
+  if (endHour <= startHour) {
+    endHour = Math.min(TIMELINE_END_HOUR, startHour + 0.25);
+  }
+
+  if (endHour <= startHour) return null;
+  return { startHour, endHour };
 }
 
 function CalendarGrid({
@@ -544,19 +574,51 @@ function CalendarGrid({
             color,
           }))
         );
-        const itemHours = items.map((item) => ({ item, hour: parseHour(item.timeText) }));
-        const untimedItems = itemHours.filter(({ hour }) => hour === null).map(({ item }) => item);
-        const timedGroupsMap = new Map<string, { item: CalendarItem; hour: number }[]>();
-        itemHours
-          .filter((entry): entry is { item: CalendarItem; hour: number } => entry.hour !== null)
-          .sort((a, b) => a.hour - b.hour)
-          .forEach((entry) => {
-            const key = entry.hour.toFixed(3);
-            const existing = timedGroupsMap.get(key) ?? [];
-            existing.push(entry);
-            timedGroupsMap.set(key, existing);
+        const timedEntries = items
+          .map((item) => {
+            const timelineWindow = getTimelineWindow(item);
+            if (!timelineWindow) return null;
+            return { item, ...timelineWindow };
+          })
+          .filter((entry): entry is { item: CalendarItem; startHour: number; endHour: number } => entry !== null)
+          .sort((a, b) => a.startHour - b.startHour || a.endHour - b.endHour);
+        const timedIds = new Set(timedEntries.map((entry) => entry.item.id));
+        const untimedItems = items.filter((item) => !timedIds.has(item.id));
+
+        const laneLayouts = (() => {
+          if (timedEntries.length === 0) return [];
+          const clusters: { item: CalendarItem; startHour: number; endHour: number }[][] = [];
+          let activeCluster: { item: CalendarItem; startHour: number; endHour: number }[] = [];
+          let clusterMaxEnd = -Infinity;
+
+          timedEntries.forEach((entry) => {
+            if (activeCluster.length === 0 || entry.startHour < clusterMaxEnd) {
+              activeCluster.push(entry);
+              clusterMaxEnd = Math.max(clusterMaxEnd, entry.endHour);
+              return;
+            }
+            clusters.push(activeCluster);
+            activeCluster = [entry];
+            clusterMaxEnd = entry.endHour;
           });
-        const timedGroups = Array.from(timedGroupsMap.values()).sort((a, b) => a[0].hour - b[0].hour);
+          if (activeCluster.length > 0) clusters.push(activeCluster);
+
+          return clusters.flatMap((cluster) => {
+            const laneEnds: number[] = [];
+            const placed = cluster.map((entry) => {
+              const laneIndex = laneEnds.findIndex((laneEnd) => laneEnd <= entry.startHour + 1e-6);
+              if (laneIndex === -1) {
+                laneEnds.push(entry.endHour);
+                return { ...entry, lane: laneEnds.length - 1 };
+              }
+              laneEnds[laneIndex] = entry.endHour;
+              return { ...entry, lane: laneIndex };
+            });
+
+            const laneCount = laneEnds.length || 1;
+            return placed.map((entry) => ({ ...entry, laneCount }));
+          });
+        })();
 
         return (
           <div
@@ -612,8 +674,8 @@ function CalendarGrid({
                       </div>
                       <p className="text-sm xl:text-base truncate">
                         <span className="font-medium">{item.title}</span>
-                        {item.timeText ? (
-                          <span className="text-muted-foreground"> · {item.timeText}</span>
+                        {getItemTimeLabel(item) ? (
+                          <span className="text-muted-foreground"> · {getItemTimeLabel(item)}</span>
                         ) : null}
                       </p>
                     </div>
@@ -661,29 +723,26 @@ function CalendarGrid({
                     ) : null}
 
                     {(() => {
-                      const timedLayouts = timedGroups.map((group, groupIndex) => {
-                        const groupHour = group[0]?.hour ?? TIMELINE_START_HOUR;
-                        const relativeHour = Math.max(
-                          0,
-                          Math.min(TIMELINE_VISIBLE_HOURS, groupHour - TIMELINE_START_HOUR)
-                        );
-                        const groupHeight =
-                          group.length * TIMELINE_ITEM_HEIGHT_PX +
-                          Math.max(0, group.length - 1) * TIMELINE_STACK_GAP_PX;
-                        const groupHeightPercent = (groupHeight / TIMELINE_HEIGHT_PX) * 100;
+                      const timedLayouts = laneLayouts.map((entry, idx) => {
+                        const durationPercent = ((entry.endHour - entry.startHour) / TIMELINE_VISIBLE_HOURS) * 100;
+                        const heightPercent = Math.max(MIN_EVENT_HEIGHT_PERCENT, durationPercent);
+                        const rawTopPercent =
+                          ((entry.startHour - TIMELINE_START_HOUR) / TIMELINE_VISIBLE_HOURS) * 100;
                         const topPercent = Math.max(
                           0,
-                          Math.min(
-                            (relativeHour / TIMELINE_VISIBLE_HOURS) * 100,
-                            Math.max(0, 100 - groupHeightPercent)
-                          )
+                          Math.min(rawTopPercent, 100 - heightPercent)
                         );
+                        const laneGapPercent = entry.laneCount > 1 ? 1 : 0;
+                        const widthPercent = Math.max(2, (100 / entry.laneCount) - laneGapPercent);
+                        const leftPercent = (entry.lane * 100) / entry.laneCount;
 
                         return {
-                          group,
-                          groupHour,
-                          groupIndex,
+                          id: `${entry.item.id}-${idx}`,
+                          item: entry.item,
                           topPercent,
+                          heightPercent,
+                          leftPercent,
+                          widthPercent,
                         };
                       });
 
@@ -705,34 +764,33 @@ function CalendarGrid({
                           ) : (
                             timedLayouts.map((layout) => (
                               <div
-                                key={`timed-group-${layout.groupIndex}-${layout.groupHour}`}
-                                className="absolute left-2 right-2 space-y-1.5"
-                                style={{ top: `${layout.topPercent}%` }}
+                                key={layout.id}
+                                className="absolute rounded-md border bg-card/95 px-2 py-1 shadow-sm"
+                                style={{
+                                  top: `${layout.topPercent}%`,
+                                  left: `${layout.leftPercent}%`,
+                                  width: `${layout.widthPercent}%`,
+                                  minHeight: `${MIN_EVENT_HEIGHT_PERCENT}%`,
+                                  height: `${layout.heightPercent}%`,
+                                }}
                               >
-                                {layout.group.map(({ item }, stackIndex) => (
-                                  <div
-                                    key={`${item.id}-timed-${stackIndex}`}
-                                    className="rounded-md border bg-card/95 px-2 py-1 shadow-sm min-h-[34px]"
-                                  >
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                      <div className="flex shrink-0 items-center gap-1">
-                                        {resolveItemColors(item).map((color, index) => (
-                                          <span
-                                            key={`${item.id}-timed-${index}`}
-                                            className="h-2.5 w-2.5 rounded-full"
-                                            style={{ backgroundColor: color }}
-                                          />
-                                        ))}
-                                      </div>
-                                      <p className="truncate text-xs xl:text-sm">
-                                        <span className="font-medium">{item.title}</span>
-                                        {item.timeText ? (
-                                          <span className="text-muted-foreground"> · {item.timeText}</span>
-                                        ) : null}
-                                      </p>
-                                    </div>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <div className="flex shrink-0 items-center gap-1">
+                                    {resolveItemColors(layout.item).map((color, index) => (
+                                      <span
+                                        key={`${layout.item.id}-timed-${index}`}
+                                        className="h-2.5 w-2.5 rounded-full"
+                                        style={{ backgroundColor: color }}
+                                      />
+                                    ))}
                                   </div>
-                                ))}
+                                  <p className="truncate text-xs xl:text-sm">
+                                    <span className="font-medium">{layout.item.title}</span>
+                                    {getItemTimeLabel(layout.item) ? (
+                                      <span className="text-muted-foreground"> · {getItemTimeLabel(layout.item)}</span>
+                                    ) : null}
+                                  </p>
+                                </div>
                               </div>
                             ))
                           )}
