@@ -1,5 +1,10 @@
 -- Ajustes solicitados (rodar via Supabase SQL editor ou migration)
 
+-- 0) Agenda multi-pessoa (backward-compatible)
+-- Novos inserts devem gravar person_ids (uuid[]), mantendo person_id legado como fallback.
+alter table recurring_items add column if not exists person_ids uuid[] default null;
+alter table one_off_items add column if not exists person_ids uuid[] default null;
+
 -- 1) kid_routine_checks: unique por template + date e default de completed=true
 alter table kid_routine_checks
   add constraint kid_routine_checks_template_date_uniq unique (template_id, date);

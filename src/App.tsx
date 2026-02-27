@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { QRCodeCanvas } from 'qrcode.react';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { addDays, format, formatISO, isSameDay } from 'date-fns';
@@ -445,6 +445,26 @@ function Sidebar({
   );
 }
 
+const CALENDAR_AUTO_RESET_MS = 60_000;
+const TIMELINE_START_HOUR = 7;
+const TIMELINE_END_HOUR = 22;
+const TIMELINE_VISIBLE_HOURS = TIMELINE_END_HOUR - TIMELINE_START_HOUR;
+
+function parseHour(timeText: string | null): number | null {
+  if (!timeText) return null;
+
+  const normalized = timeText.trim().toLowerCase();
+  const match = normalized.match(/^(\d{1,2})[h:](\d{0,2})$/);
+  if (!match) return null;
+
+  const hour = Number.parseInt(match[1], 10);
+  const minute = match[2] ? Number.parseInt(match[2], 10) : 0;
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+
+  return hour + minute / 60;
+}
+
 function CalendarGrid({
   loading,
   days,
@@ -455,53 +475,139 @@ function CalendarGrid({
   people: Person[];
 }) {
   const desktopOverride = useDesktopOverrideValue();
-  const personById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const fallbackColor = '#0EA5E9';
-  const now = useMemo(() => new Date(), []);
+  const personById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
+  const todayInWeek = useMemo(
+    () => days.find(({ date }) => isSameDay(date, new Date()))?.date ?? days[0]?.date ?? new Date(),
+    [days]
+  );
+  const [selectedDay, setSelectedDay] = useState<Date>(todayInWeek);
+  const resetTimerRef = useRef<number | null>(null);
+
+  const resolveItemColors = useCallback((item: CalendarItem) => {
+    if (item.personColors.length > 0) return item.personColors;
+    if (item.personIds.length > 0) {
+      return item.personIds.map((pid) => personById.get(pid)?.color ?? fallbackColor);
+    }
+    return [fallbackColor];
+  }, [personById, fallbackColor]);
+
+  const clearResetTimer = useCallback(() => {
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = null;
+    }
+  }, []);
+
+  const startResetTimer = useCallback(() => {
+    clearResetTimer();
+    resetTimerRef.current = window.setTimeout(() => {
+      setSelectedDay(todayInWeek);
+    }, CALENDAR_AUTO_RESET_MS);
+  }, [clearResetTimer, todayInWeek]);
+
+  const selectDay = useCallback((date: Date) => {
+    setSelectedDay(date);
+    startResetTimer();
+  }, [startResetTimer]);
+
+  useEffect(() => {
+    if (days.length === 0) return;
+    setSelectedDay((current) => {
+      const stillVisible = days.some(({ date }) => isSameDay(date, current));
+      return stillVisible ? current : todayInWeek;
+    });
+  }, [days, todayInWeek]);
+
+  useEffect(() => {
+    startResetTimer();
+    return clearResetTimer;
+  }, [startResetTimer, clearResetTimer]);
 
   return (
     <div
-      className={cn(
-        'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 xl:flex-1',
-        desktopOverride && 'grid-cols-7 flex-1'
-      )}
+      className={desktopOverride
+        ? 'flex flex-1 gap-2 overflow-hidden'
+        : 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:flex xl:flex-1 xl:gap-2 xl:overflow-hidden'}
     >
       {days.map(({ date, items }) => {
+        const isToday = isSameDay(date, todayInWeek);
+        const isSelected = isSameDay(date, selectedDay);
         const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' });
-        const today = isSameDay(date, now);
         const maxEvents = 8;
         const overflow = Math.max(items.length - maxEvents, 0);
+        const compactDots = items.flatMap((item) =>
+          resolveItemColors(item).map((color, index) => ({
+            key: `${item.id}-compact-${index}`,
+            color,
+          }))
+        );
+        const itemHours = items.map((item) => ({ item, hour: parseHour(item.timeText) }));
+        const untimedItems = itemHours.filter(({ hour }) => hour === null).map(({ item }) => item);
+        const timedGroupsMap = new Map<string, { item: CalendarItem; hour: number }[]>();
+        itemHours
+          .filter((entry): entry is { item: CalendarItem; hour: number } => entry.hour !== null)
+          .sort((a, b) => a.hour - b.hour)
+          .forEach((entry) => {
+            const key = entry.hour.toFixed(3);
+            const existing = timedGroupsMap.get(key) ?? [];
+            existing.push(entry);
+            timedGroupsMap.set(key, existing);
+          });
+        const timedGroups = Array.from(timedGroupsMap.values()).sort((a, b) => a[0].hour - b[0].hour);
+
         return (
           <div
             key={formatISO(date)}
+            onClick={() => selectDay(date)}
             className={cn(
-              'flex flex-col rounded-lg border bg-card p-3',
-              today && 'ring-2 ring-primary/40 bg-primary/5 dark:bg-primary/10'
+              'flex min-h-[160px] cursor-pointer flex-col rounded-lg border bg-card p-3',
+              isToday && 'ring-1 ring-primary/40',
+              desktopOverride && isSelected && 'ring-2 ring-primary/40 bg-primary/5 dark:bg-primary/10',
+              !desktopOverride && isSelected && 'xl:ring-2 xl:ring-primary/40 xl:bg-primary/5 dark:xl:bg-primary/10',
+              desktopOverride
+                ? (isSelected ? 'flex-[3]' : 'flex-[1] overflow-hidden')
+                : (isSelected ? 'xl:flex-[3]' : 'xl:flex-[1] xl:overflow-hidden'),
+              'xl:min-w-0'
             )}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                selectDay(date);
+              }
+            }}
           >
             <div className="flex items-baseline gap-1.5 mb-2">
               <p className={cn(
                 'text-xs xl:text-sm uppercase tracking-wide',
-                today ? 'text-primary font-semibold' : 'text-muted-foreground'
+                isSelected ? 'text-primary font-semibold' : 'text-muted-foreground'
               )}>{dayName}</p>
               <p className={cn(
                 'text-2xl xl:text-3xl font-semibold leading-tight',
-                today && 'text-primary'
+                isSelected && 'text-primary'
               )}>{format(date, 'dd')}</p>
             </div>
 
-            <div className="flex flex-col gap-1.5 xl:gap-2 flex-1">
-              {loading ? (
-                <Skeleton className="h-4 w-full" />
-              ) : items.length === 0 ? (
-                <p className="text-xs text-muted-foreground/50">—</p>
-              ) : (
-                items.slice(0, maxEvents).map((item) => {
-                  const person = personById.get(item.personId);
-                  const dotColor = person?.color ?? item.personColor ?? fallbackColor;
-                  return (
+            {!desktopOverride && (
+              <div className="flex flex-1 flex-col gap-1.5 xl:hidden">
+                {loading ? (
+                  <Skeleton className="h-4 w-full" />
+                ) : items.length === 0 ? (
+                  <p className="text-xs text-muted-foreground/50">—</p>
+                ) : (
+                  items.slice(0, maxEvents).map((item) => (
                     <div key={item.id} className="flex items-center gap-1.5 min-w-0">
-                      <span className="h-2 w-2 xl:h-3 xl:w-3 shrink-0 rounded-full" style={{ backgroundColor: dotColor }} />
+                      <div className="flex shrink-0 items-center gap-1">
+                        {resolveItemColors(item).map((color, index) => (
+                          <span
+                            key={`${item.id}-mobile-${index}`}
+                            className="h-2 w-2 xl:h-3 xl:w-3 rounded-full"
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
+                      </div>
                       <p className="text-sm xl:text-base truncate">
                         <span className="font-medium">{item.title}</span>
                         {item.timeText ? (
@@ -509,13 +615,125 @@ function CalendarGrid({
                         ) : null}
                       </p>
                     </div>
-                  );
-                })
-              )}
-              {overflow > 0 ? (
-                <p className="text-xs text-muted-foreground">+{overflow}</p>
-              ) : null}
-            </div>
+                  ))
+                )}
+                {overflow > 0 ? (
+                  <p className="text-xs text-muted-foreground">+{overflow}</p>
+                ) : null}
+              </div>
+            )}
+
+            {isSelected ? (
+              <div className={cn('flex-1 space-y-2', !desktopOverride && 'hidden xl:block')}>
+                {loading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-[180px] w-full" />
+                  </div>
+                ) : items.length === 0 ? (
+                  <p className="text-xs text-muted-foreground/50">—</p>
+                ) : (
+                  <>
+                    {untimedItems.length > 0 ? (
+                      <div className="space-y-1">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Sem horário
+                        </p>
+                        {untimedItems.map((item) => (
+                          <div key={`${item.id}-untimed`} className="flex items-center gap-1.5 min-w-0">
+                            <div className="flex shrink-0 items-center gap-1">
+                              {resolveItemColors(item).map((color, index) => (
+                                <span
+                                  key={`${item.id}-untimed-${index}`}
+                                  className="h-2.5 w-2.5 rounded-full"
+                                  style={{ backgroundColor: color }}
+                                />
+                              ))}
+                            </div>
+                            <p className="truncate text-sm">
+                              <span className="font-medium">{item.title}</span>
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <div className="relative h-[300px] overflow-hidden rounded-md border bg-muted/20">
+                      <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-border/50" />
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 border-t border-dashed border-border/50" />
+                      <p className="pointer-events-none absolute left-2 top-1 text-[10px] uppercase text-muted-foreground">
+                        07:00
+                      </p>
+                      <p className="pointer-events-none absolute left-2 bottom-1 text-[10px] uppercase text-muted-foreground">
+                        22:00
+                      </p>
+
+                      {timedGroups.length === 0 ? (
+                        <p className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                          Sem eventos com horário
+                        </p>
+                      ) : (
+                        timedGroups.map((group) =>
+                          group.map(({ item, hour }, stackIndex) => {
+                            const topPercent = Math.min(
+                              96,
+                              Math.max(
+                                0,
+                                ((hour - TIMELINE_START_HOUR) / TIMELINE_VISIBLE_HOURS) * 100
+                              )
+                            );
+
+                            return (
+                              <div
+                                key={`${item.id}-timed-${stackIndex}`}
+                                className="absolute left-2 right-2 rounded-md border bg-card/95 px-2 py-1 shadow-sm"
+                                style={{ top: `calc(${topPercent}% + ${stackIndex * 18}px)` }}
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <div className="flex shrink-0 items-center gap-1">
+                                    {resolveItemColors(item).map((color, index) => (
+                                      <span
+                                        key={`${item.id}-timed-${index}`}
+                                        className="h-2.5 w-2.5 rounded-full"
+                                        style={{ backgroundColor: color }}
+                                      />
+                                    ))}
+                                  </div>
+                                  <p className="truncate text-xs xl:text-sm">
+                                    <span className="font-medium">{item.title}</span>
+                                    {item.timeText ? (
+                                      <span className="text-muted-foreground"> · {item.timeText}</span>
+                                    ) : null}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className={cn('flex-1 overflow-hidden', !desktopOverride && 'hidden xl:block')}>
+                {loading ? (
+                  <Skeleton className="h-7 w-full" />
+                ) : compactDots.length === 0 ? (
+                  <p className="text-xs text-muted-foreground/50">—</p>
+                ) : (
+                  <div className="flex max-h-full flex-wrap content-start gap-1 overflow-hidden pt-1">
+                    {compactDots.map((dot) => (
+                      <span
+                        key={dot.key}
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: dot.color }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
       })}

@@ -66,16 +66,17 @@ export function AgendaAdmin({
     if (!requireAuth(hasSession)) return;
     if (!recForm.title || recForm.personIds.length === 0) return toast.error('Título e pelo menos uma pessoa são obrigatórios');
     try {
-      const rows = recForm.personIds.map((pid) => ({
+      const payload = {
         title: recForm.title,
         day_of_week: recForm.dayOfWeek,
         time_text: recForm.timeText || null,
-        person_id: pid,
+        person_id: recForm.personIds[0],
+        person_ids: recForm.personIds,
         is_private: false,
-      }));
-      const { error } = await supabase!.from('recurring_items').insert(rows);
+      };
+      const { error } = await supabase!.from('recurring_items').insert(payload);
       if (error) return toast.error(error.message);
-      toast.success(rows.length > 1 ? `${rows.length} eventos criados` : 'Evento recorrente criado');
+      toast.success('Evento recorrente criado');
       setRecForm((prev) => ({ ...prev, title: '', timeText: '', personIds: [] }));
       setShowRecForm(false);
       refresh();
@@ -90,16 +91,17 @@ export function AgendaAdmin({
       return toast.error('Título, pelo menos uma pessoa e data são obrigatórios');
     }
     try {
-      const rows = oneOffForm.personIds.map((pid) => ({
+      const payload = {
         title: oneOffForm.title,
         date: oneOffForm.date,
         time_text: oneOffForm.timeText || null,
-        person_id: pid,
+        person_id: oneOffForm.personIds[0],
+        person_ids: oneOffForm.personIds,
         is_private: false,
-      }));
-      const { error } = await supabase!.from('one_off_items').insert(rows);
+      };
+      const { error } = await supabase!.from('one_off_items').insert(payload);
       if (error) return toast.error(error.message);
-      toast.success(rows.length > 1 ? `${rows.length} eventos criados` : 'Evento pontual criado');
+      toast.success('Evento pontual criado');
       setOneOffForm((prev) => ({ ...prev, title: '', timeText: '', personIds: [] }));
       setShowOneOffForm(false);
       refresh();
@@ -129,7 +131,13 @@ export function AgendaAdmin({
     else { toast.success('Removido'); refresh(); }
   };
 
-  const personName = (id: string) => people.find((p) => p.id === id)?.name ?? 'Pessoa';
+  const personIdsFromItem = (item: { personId: string; personIds?: string[] }) =>
+    item.personIds?.length ? item.personIds : item.personId ? [item.personId] : [];
+
+  const personLabel = (ids: string[]) => {
+    const names = ids.map((id) => people.find((p) => p.id === id)?.name ?? 'Pessoa');
+    return names.join(' + ');
+  };
 
   return (
     <Card>
@@ -186,11 +194,25 @@ export function AgendaAdmin({
                 <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border px-4 py-3">
                   <div className="min-w-0">
                     <EditableText value={item.title} onSave={(t) => updateTitle('recurring_items', item.id, t)} disabled={disabled} />
-                    <p className="text-xs text-muted-foreground">
-                      {dayNames[item.dayOfWeek] ?? `Dia ${item.dayOfWeek}`}
-                      {item.timeText ? ` • ${item.timeText}` : ''} • {personName(item.personId)}
-                      {item.isPrivate ? ' • privado' : ''}
-                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        {personIdsFromItem(item).map((pid) => {
+                          const person = people.find((p) => p.id === pid);
+                          return (
+                            <span
+                              key={`${item.id}-${pid}`}
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: person?.color ?? '#0EA5E9' }}
+                            />
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {dayNames[item.dayOfWeek] ?? `Dia ${item.dayOfWeek}`}
+                        {item.timeText ? ` • ${item.timeText}` : ''} • {personLabel(personIdsFromItem(item))}
+                        {item.isPrivate ? ' • privado' : ''}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <DropdownMenu>
@@ -259,10 +281,24 @@ export function AgendaAdmin({
                 <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border px-4 py-3">
                   <div className="min-w-0">
                     <EditableText value={item.title} onSave={(t) => updateTitle('one_off_items', item.id, t)} disabled={disabled} />
-                    <p className="text-xs text-muted-foreground">
-                      {item.date}{item.timeText ? ` • ${item.timeText}` : ''} • {personName(item.personId)}
-                      {item.isPrivate ? ' • privado' : ''}
-                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        {personIdsFromItem(item).map((pid) => {
+                          const person = people.find((p) => p.id === pid);
+                          return (
+                            <span
+                              key={`${item.id}-${pid}`}
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: person?.color ?? '#0EA5E9' }}
+                            />
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {item.date}{item.timeText ? ` • ${item.timeText}` : ''} • {personLabel(personIdsFromItem(item))}
+                        {item.isPrivate ? ' • privado' : ''}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <DropdownMenu>
