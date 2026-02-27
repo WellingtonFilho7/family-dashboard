@@ -516,7 +516,7 @@ export function AgendaAdmin({
         </div>
 
         <Dialog open={Boolean(editForm)} onOpenChange={(open) => !open && setEditForm(null)}>
-          <DialogContent>
+          <DialogContent className="w-[min(94vw,560px)] max-h-[90dvh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Editar evento</DialogTitle>
               <DialogDescription>
@@ -559,29 +559,35 @@ export function AgendaAdmin({
                   />
                 )}
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <Input
-                    type="time"
-                    step={60}
-                    min="00:00"
-                    max="23:59"
-                    value={editForm.startTime}
-                    onChange={(e) =>
-                      setEditForm((prev) => (prev ? { ...prev, startTime: e.target.value } : prev))
-                    }
-                    disabled={disabled}
-                  />
-                  <Input
-                    type="time"
-                    step={60}
-                    min="00:00"
-                    max="23:59"
-                    value={editForm.endTime}
-                    onChange={(e) =>
-                      setEditForm((prev) => (prev ? { ...prev, endTime: e.target.value } : prev))
-                    }
-                    disabled={disabled}
-                  />
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="min-w-0">
+                    <Input
+                      type="time"
+                      step={60}
+                      min="00:00"
+                      max="23:59"
+                      className="min-w-0"
+                      value={editForm.startTime}
+                      onChange={(e) =>
+                        setEditForm((prev) => (prev ? { ...prev, startTime: e.target.value } : prev))
+                      }
+                      disabled={disabled}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <Input
+                      type="time"
+                      step={60}
+                      min="00:00"
+                      max="23:59"
+                      className="min-w-0"
+                      value={editForm.endTime}
+                      onChange={(e) =>
+                        setEditForm((prev) => (prev ? { ...prev, endTime: e.target.value } : prev))
+                      }
+                      disabled={disabled}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1">

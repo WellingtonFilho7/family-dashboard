@@ -643,13 +643,13 @@ function CalendarGrid({
               }
             }}
           >
-            <div className="flex items-baseline gap-1.5 mb-2">
+            <div className="mb-3 flex items-start gap-1.5">
               <p className={cn(
-                'text-xs xl:text-sm uppercase tracking-wide',
+                'pt-1 text-xs xl:text-sm uppercase tracking-wide leading-none',
                 isSelected ? 'text-primary font-semibold' : 'text-muted-foreground'
               )}>{dayName}</p>
               <p className={cn(
-                'text-2xl xl:text-3xl font-semibold leading-tight',
+                'text-2xl xl:text-3xl font-semibold leading-none',
                 isSelected && 'text-primary'
               )}>{format(date, 'dd')}</p>
             </div>
@@ -751,10 +751,10 @@ function CalendarGrid({
                         <div className="relative min-h-[300px] flex-1 overflow-hidden">
                           <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-border/50" />
                           <div className="pointer-events-none absolute inset-x-0 bottom-0 border-t border-dashed border-border/50" />
-                          <p className="pointer-events-none absolute left-2 top-1 text-[10px] uppercase text-muted-foreground">
+                          <p className="pointer-events-none absolute left-2 top-2 text-[10px] uppercase text-muted-foreground">
                             07:00
                           </p>
-                          <p className="pointer-events-none absolute left-2 bottom-1 text-[10px] uppercase text-muted-foreground">
+                          <p className="pointer-events-none absolute left-2 bottom-2 text-[10px] uppercase text-muted-foreground">
                             22:00
                           </p>
 
@@ -766,12 +766,12 @@ function CalendarGrid({
                             timedLayouts.map((layout) => (
                               <div
                                 key={layout.id}
-                                className="absolute overflow-hidden rounded-md border bg-card/95 px-2 py-1 shadow-sm"
+                                className="absolute overflow-hidden rounded-md border bg-card/95 px-2.5 py-1.5 shadow-sm"
                                 style={{
                                   top: `${layout.topPercent}%`,
                                   left: `${layout.leftPercent}%`,
                                   width: `${layout.widthPercent}%`,
-                                  height: `max(${layout.heightPercent}%, 34px)`,
+                                  height: `max(${layout.heightPercent}%, 42px)`,
                                 }}
                               >
                                 <div className="flex items-start gap-1.5 min-w-0">
@@ -789,7 +789,7 @@ function CalendarGrid({
                                       {layout.item.title}
                                     </p>
                                     {getItemTimeLabel(layout.item) ? (
-                                      <p className="mt-0.5 truncate text-[11px] leading-none text-muted-foreground tabular-nums">
+                                      <p className="mt-0.5 truncate text-[11px] leading-tight text-muted-foreground tabular-nums">
                                         {getItemTimeLabel(layout.item)}
                                       </p>
                                     ) : null}
