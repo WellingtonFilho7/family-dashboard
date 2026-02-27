@@ -62,14 +62,35 @@ export function AgendaAdmin({
   const togglePerson = (ids: string[], id: string) =>
     ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
 
+  const normalizeTimeText = (rawValue: string): string | null => {
+    const value = rawValue.trim().toLowerCase();
+    if (!value) return null;
+
+    const match =
+      value.match(/(?:^|[^0-9])(\d{1,2})\s*(?:h|:)\s*(\d{0,2})(?:\b|[^0-9])/) ??
+      value.match(/^(\d{1,2})$/);
+    if (!match) return null;
+
+    const hour = Number.parseInt(match[1], 10);
+    const minute = match[2] ? Number.parseInt(match[2], 10) : 0;
+    if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  };
+
   const createRecurring = async () => {
     if (!requireAuth(hasSession)) return;
     if (!recForm.title || recForm.personIds.length === 0) return toast.error('Título e pelo menos uma pessoa são obrigatórios');
+    const normalizedTime = normalizeTimeText(recForm.timeText);
+    if (recForm.timeText.trim() && !normalizedTime) {
+      return toast.error('Hora inválida. Use formatos como 09:30, 9h ou 9h30.');
+    }
     try {
       const payload = {
         title: recForm.title,
         day_of_week: recForm.dayOfWeek,
-        time_text: recForm.timeText || null,
+        time_text: normalizedTime,
         person_id: recForm.personIds[0],
         person_ids: recForm.personIds,
         is_private: false,
@@ -90,11 +111,15 @@ export function AgendaAdmin({
     if (!oneOffForm.title || oneOffForm.personIds.length === 0 || !oneOffForm.date) {
       return toast.error('Título, pelo menos uma pessoa e data são obrigatórios');
     }
+    const normalizedTime = normalizeTimeText(oneOffForm.timeText);
+    if (oneOffForm.timeText.trim() && !normalizedTime) {
+      return toast.error('Hora inválida. Use formatos como 14:00, 14h ou 14h30.');
+    }
     try {
       const payload = {
         title: oneOffForm.title,
         date: oneOffForm.date,
-        time_text: oneOffForm.timeText || null,
+        time_text: normalizedTime,
         person_id: oneOffForm.personIds[0],
         person_ids: oneOffForm.personIds,
         is_private: false,

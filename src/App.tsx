@@ -449,12 +449,17 @@ const CALENDAR_AUTO_RESET_MS = 60_000;
 const TIMELINE_START_HOUR = 7;
 const TIMELINE_END_HOUR = 22;
 const TIMELINE_VISIBLE_HOURS = TIMELINE_END_HOUR - TIMELINE_START_HOUR;
+const TIMELINE_HEIGHT_PX = 300;
+const TIMELINE_ITEM_HEIGHT_PX = 34;
+const TIMELINE_STACK_GAP_PX = 6;
 
 function parseHour(timeText: string | null): number | null {
   if (!timeText) return null;
 
   const normalized = timeText.trim().toLowerCase();
-  const match = normalized.match(/^(\d{1,2})[h:](\d{0,2})$/);
+  const match =
+    normalized.match(/(?:^|[^0-9])(\d{1,2})\s*(?:h|:)\s*(\d{0,2})(?:\b|[^0-9])/) ??
+    normalized.match(/^(\d{1,2})$/);
   if (!match) return null;
 
   const hour = Number.parseInt(match[1], 10);
@@ -512,17 +517,14 @@ function CalendarGrid({
   }, [startResetTimer]);
 
   useEffect(() => {
-    if (days.length === 0) return;
-    setSelectedDay((current) => {
-      const stillVisible = days.some(({ date }) => isSameDay(date, current));
-      return stillVisible ? current : todayInWeek;
-    });
-  }, [days, todayInWeek]);
-
-  useEffect(() => {
     startResetTimer();
     return clearResetTimer;
   }, [startResetTimer, clearResetTimer]);
+
+  const selectedDayInView = useMemo(() => {
+    const stillVisible = days.some(({ date }) => isSameDay(date, selectedDay));
+    return stillVisible ? selectedDay : todayInWeek;
+  }, [days, selectedDay, todayInWeek]);
 
   return (
     <div
@@ -532,7 +534,7 @@ function CalendarGrid({
     >
       {days.map(({ date, items }) => {
         const isToday = isSameDay(date, todayInWeek);
-        const isSelected = isSameDay(date, selectedDay);
+        const isSelected = isSameDay(date, selectedDayInView);
         const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' });
         const maxEvents = 8;
         const overflow = Math.max(items.length - maxEvents, 0);
@@ -658,60 +660,87 @@ function CalendarGrid({
                       </div>
                     ) : null}
 
-                    <div className="relative h-[300px] overflow-hidden rounded-md border bg-muted/20">
-                      <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-border/50" />
-                      <div className="pointer-events-none absolute inset-x-0 bottom-0 border-t border-dashed border-border/50" />
-                      <p className="pointer-events-none absolute left-2 top-1 text-[10px] uppercase text-muted-foreground">
-                        07:00
-                      </p>
-                      <p className="pointer-events-none absolute left-2 bottom-1 text-[10px] uppercase text-muted-foreground">
-                        22:00
-                      </p>
+                    {(() => {
+                      const timedLayouts = timedGroups.map((group, groupIndex) => {
+                        const groupHour = group[0]?.hour ?? TIMELINE_START_HOUR;
+                        const relativeHour = Math.max(
+                          0,
+                          Math.min(TIMELINE_VISIBLE_HOURS, groupHour - TIMELINE_START_HOUR)
+                        );
+                        const topPx =
+                          (relativeHour / TIMELINE_VISIBLE_HOURS) * TIMELINE_HEIGHT_PX;
+                        const groupHeight =
+                          group.length * TIMELINE_ITEM_HEIGHT_PX +
+                          Math.max(0, group.length - 1) * TIMELINE_STACK_GAP_PX;
 
-                      {timedGroups.length === 0 ? (
-                        <p className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                          Sem eventos com horário
-                        </p>
-                      ) : (
-                        timedGroups.map((group) =>
-                          group.map(({ item, hour }, stackIndex) => {
-                            const topPercent = Math.min(
-                              96,
-                              Math.max(
-                                0,
-                                ((hour - TIMELINE_START_HOUR) / TIMELINE_VISIBLE_HOURS) * 100
-                              )
-                            );
+                        return {
+                          group,
+                          groupHour,
+                          groupIndex,
+                          topPx,
+                          groupHeight,
+                        };
+                      });
 
-                            return (
-                              <div
-                                key={`${item.id}-timed-${stackIndex}`}
-                                className="absolute left-2 right-2 rounded-md border bg-card/95 px-2 py-1 shadow-sm"
-                                style={{ top: `calc(${topPercent}% + ${stackIndex * 18}px)` }}
-                              >
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <div className="flex shrink-0 items-center gap-1">
-                                    {resolveItemColors(item).map((color, index) => (
-                                      <span
-                                        key={`${item.id}-timed-${index}`}
-                                        className="h-2.5 w-2.5 rounded-full"
-                                        style={{ backgroundColor: color }}
-                                      />
-                                    ))}
-                                  </div>
-                                  <p className="truncate text-xs xl:text-sm">
-                                    <span className="font-medium">{item.title}</span>
-                                    {item.timeText ? (
-                                      <span className="text-muted-foreground"> · {item.timeText}</span>
-                                    ) : null}
-                                  </p>
+                      const requiredHeight = Math.max(
+                        TIMELINE_HEIGHT_PX,
+                        ...timedLayouts.map((layout) => layout.topPx + layout.groupHeight + 4)
+                      );
+
+                      return (
+                        <div className="h-[300px] overflow-y-auto rounded-md border bg-muted/20">
+                          <div className="relative min-h-[300px]" style={{ height: `${requiredHeight}px` }}>
+                            <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-border/50" />
+                            <div className="pointer-events-none absolute inset-x-0 bottom-0 border-t border-dashed border-border/50" />
+                            <p className="pointer-events-none absolute left-2 top-1 text-[10px] uppercase text-muted-foreground">
+                              07:00
+                            </p>
+                            <p className="pointer-events-none absolute left-2 bottom-1 text-[10px] uppercase text-muted-foreground">
+                              22:00
+                            </p>
+
+                            {timedLayouts.length === 0 ? (
+                              <p className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                                Sem eventos com horário
+                              </p>
+                            ) : (
+                              timedLayouts.map((layout) => (
+                                <div
+                                  key={`timed-group-${layout.groupIndex}-${layout.groupHour}`}
+                                  className="absolute left-2 right-2 space-y-1.5"
+                                  style={{ top: `${layout.topPx}px` }}
+                                >
+                                  {layout.group.map(({ item }, stackIndex) => (
+                                    <div
+                                      key={`${item.id}-timed-${stackIndex}`}
+                                      className="rounded-md border bg-card/95 px-2 py-1 shadow-sm min-h-[34px]"
+                                    >
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <div className="flex shrink-0 items-center gap-1">
+                                          {resolveItemColors(item).map((color, index) => (
+                                            <span
+                                              key={`${item.id}-timed-${index}`}
+                                              className="h-2.5 w-2.5 rounded-full"
+                                              style={{ backgroundColor: color }}
+                                            />
+                                          ))}
+                                        </div>
+                                        <p className="truncate text-xs xl:text-sm">
+                                          <span className="font-medium">{item.title}</span>
+                                          {item.timeText ? (
+                                            <span className="text-muted-foreground"> · {item.timeText}</span>
+                                          ) : null}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
-                              </div>
-                            );
-                          })
-                        )
-                      )}
-                    </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </div>
