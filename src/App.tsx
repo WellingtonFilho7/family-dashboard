@@ -626,7 +626,7 @@ function CalendarGrid({
             )}
 
             {isSelected ? (
-              <div className={cn('flex-1 space-y-2', !desktopOverride && 'hidden xl:block')}>
+              <div className={cn('flex min-h-0 flex-1 flex-col gap-2', !desktopOverride && 'hidden xl:flex')}>
                 {loading ? (
                   <div className="space-y-2">
                     <Skeleton className="h-8 w-full" />
@@ -667,108 +667,75 @@ function CalendarGrid({
                           0,
                           Math.min(TIMELINE_VISIBLE_HOURS, groupHour - TIMELINE_START_HOUR)
                         );
-                        const topPx =
-                          (relativeHour / TIMELINE_VISIBLE_HOURS) * TIMELINE_HEIGHT_PX;
                         const groupHeight =
                           group.length * TIMELINE_ITEM_HEIGHT_PX +
                           Math.max(0, group.length - 1) * TIMELINE_STACK_GAP_PX;
+                        const groupHeightPercent = (groupHeight / TIMELINE_HEIGHT_PX) * 100;
+                        const topPercent = Math.max(
+                          0,
+                          Math.min(
+                            (relativeHour / TIMELINE_VISIBLE_HOURS) * 100,
+                            Math.max(0, 100 - groupHeightPercent)
+                          )
+                        );
 
                         return {
                           group,
                           groupHour,
                           groupIndex,
-                          topPx,
-                          groupHeight,
+                          topPercent,
                         };
                       });
 
-                      const positionedLayouts = timedLayouts.map((layout) => ({ ...layout, topPx: layout.topPx }));
-                      const betweenGroupsGap = 4;
-                      let cursorBottom = 0;
-                      positionedLayouts.forEach((layout) => {
-                        const minTop = cursorBottom > 0 ? cursorBottom + betweenGroupsGap : 0;
-                        layout.topPx = Math.max(layout.topPx, minTop);
-                        cursorBottom = layout.topPx + layout.groupHeight;
-                      });
-
-                      const lastBottom = positionedLayouts.length
-                        ? positionedLayouts[positionedLayouts.length - 1].topPx +
-                          positionedLayouts[positionedLayouts.length - 1].groupHeight
-                        : TIMELINE_HEIGHT_PX;
-                      const overflowDelta = Math.max(0, lastBottom - TIMELINE_HEIGHT_PX);
-                      const canShiftWithoutScroll =
-                        positionedLayouts.length === 0 ||
-                        positionedLayouts[0].topPx - overflowDelta >= 0;
-
-                      if (overflowDelta > 0 && canShiftWithoutScroll) {
-                        positionedLayouts.forEach((layout) => {
-                          layout.topPx -= overflowDelta;
-                        });
-                      }
-
-                      const lastBottomAfterShift = positionedLayouts.length
-                        ? positionedLayouts[positionedLayouts.length - 1].topPx +
-                          positionedLayouts[positionedLayouts.length - 1].groupHeight
-                        : TIMELINE_HEIGHT_PX;
-                      const needsScroll = lastBottomAfterShift > TIMELINE_HEIGHT_PX;
-                      const requiredHeight = needsScroll
-                        ? Math.max(TIMELINE_HEIGHT_PX, lastBottomAfterShift + 8)
-                        : TIMELINE_HEIGHT_PX;
-
                       return (
-                        <div className={cn(
-                          'h-[300px] rounded-md border bg-muted/20',
-                          needsScroll ? 'overflow-y-auto' : 'overflow-hidden'
-                        )}>
-                          <div className="relative min-h-[300px]" style={{ height: `${requiredHeight}px` }}>
-                            <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-border/50" />
-                            <div className="pointer-events-none absolute inset-x-0 bottom-0 border-t border-dashed border-border/50" />
-                            <p className="pointer-events-none absolute left-2 top-1 text-[10px] uppercase text-muted-foreground">
-                              07:00
-                            </p>
-                            <p className="pointer-events-none absolute left-2 bottom-1 text-[10px] uppercase text-muted-foreground">
-                              22:00
-                            </p>
+                        <div className="relative min-h-[300px] flex-1 overflow-hidden">
+                          <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-border/50" />
+                          <div className="pointer-events-none absolute inset-x-0 bottom-0 border-t border-dashed border-border/50" />
+                          <p className="pointer-events-none absolute left-2 top-1 text-[10px] uppercase text-muted-foreground">
+                            07:00
+                          </p>
+                          <p className="pointer-events-none absolute left-2 bottom-1 text-[10px] uppercase text-muted-foreground">
+                            22:00
+                          </p>
 
-                            {positionedLayouts.length === 0 ? (
-                              <p className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                                Sem eventos com horário
-                              </p>
-                            ) : (
-                              positionedLayouts.map((layout) => (
-                                <div
-                                  key={`timed-group-${layout.groupIndex}-${layout.groupHour}`}
-                                  className="absolute left-2 right-2 space-y-1.5"
-                                  style={{ top: `${layout.topPx}px` }}
-                                >
-                                  {layout.group.map(({ item }, stackIndex) => (
-                                    <div
-                                      key={`${item.id}-timed-${stackIndex}`}
-                                      className="rounded-md border bg-card/95 px-2 py-1 shadow-sm min-h-[34px]"
-                                    >
-                                      <div className="flex items-center gap-1.5 min-w-0">
-                                        <div className="flex shrink-0 items-center gap-1">
-                                          {resolveItemColors(item).map((color, index) => (
-                                            <span
-                                              key={`${item.id}-timed-${index}`}
-                                              className="h-2.5 w-2.5 rounded-full"
-                                              style={{ backgroundColor: color }}
-                                            />
-                                          ))}
-                                        </div>
-                                        <p className="truncate text-xs xl:text-sm">
-                                          <span className="font-medium">{item.title}</span>
-                                          {item.timeText ? (
-                                            <span className="text-muted-foreground"> · {item.timeText}</span>
-                                          ) : null}
-                                        </p>
+                          {timedLayouts.length === 0 ? (
+                            <p className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                              Sem eventos com horário
+                            </p>
+                          ) : (
+                            timedLayouts.map((layout) => (
+                              <div
+                                key={`timed-group-${layout.groupIndex}-${layout.groupHour}`}
+                                className="absolute left-2 right-2 space-y-1.5"
+                                style={{ top: `${layout.topPercent}%` }}
+                              >
+                                {layout.group.map(({ item }, stackIndex) => (
+                                  <div
+                                    key={`${item.id}-timed-${stackIndex}`}
+                                    className="rounded-md border bg-card/95 px-2 py-1 shadow-sm min-h-[34px]"
+                                  >
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <div className="flex shrink-0 items-center gap-1">
+                                        {resolveItemColors(item).map((color, index) => (
+                                          <span
+                                            key={`${item.id}-timed-${index}`}
+                                            className="h-2.5 w-2.5 rounded-full"
+                                            style={{ backgroundColor: color }}
+                                          />
+                                        ))}
                                       </div>
+                                      <p className="truncate text-xs xl:text-sm">
+                                        <span className="font-medium">{item.title}</span>
+                                        {item.timeText ? (
+                                          <span className="text-muted-foreground"> · {item.timeText}</span>
+                                        ) : null}
+                                      </p>
                                     </div>
-                                  ))}
-                                </div>
-                              ))
-                            )}
-                          </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ))
+                          )}
                         </div>
                       );
                     })()}
