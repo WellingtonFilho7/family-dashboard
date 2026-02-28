@@ -116,7 +116,7 @@ export function PeopleAdmin({
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 overflow-hidden">
         {showForm && (
           <>
             <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
@@ -129,7 +129,7 @@ export function PeopleAdmin({
                   disabled={disabled}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Cor</label>
                   <Input

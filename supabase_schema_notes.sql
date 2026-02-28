@@ -135,7 +135,27 @@ create policy "auth_all_settings" on settings
   for all using (auth.role() = 'authenticated')
   with check (auth.role() = 'authenticated');
 
--- 6) Auth: email+password (não OTP)
+-- 6) person_ids: multi-person events (array de UUIDs)
+-- Adicionar coluna person_ids em recurring_items e one_off_items.
+-- person_id (singular) é mantido para backward compat.
+alter table recurring_items
+  add column if not exists person_ids uuid[] default '{}';
+alter table one_off_items
+  add column if not exists person_ids uuid[] default '{}';
+
+-- Migrar dados existentes: copiar person_id → person_ids onde vazio
+update recurring_items
+  set person_ids = array[person_id]
+  where person_id is not null and (person_ids is null or person_ids = '{}');
+update one_off_items
+  set person_ids = array[person_id]
+  where person_id is not null and (person_ids is null or person_ids = '{}');
+
+-- 7) end_time_text: horário de término dos eventos
+alter table recurring_items add column if not exists end_time_text text;
+alter table one_off_items add column if not exists end_time_text text;
+
+-- 8) Auth: email+password (não OTP)
 -- O app usa signInWithPassword / signUp. Para permitir sign-up sem
 -- confirmação de e-mail (recomendado para uso doméstico):
 --   Supabase Dashboard → Authentication → Providers → Email

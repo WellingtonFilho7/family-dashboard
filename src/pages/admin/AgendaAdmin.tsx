@@ -301,7 +301,7 @@ export function AgendaAdmin({
         <CardTitle>Agenda</CardTitle>
         <CardDescription>Eventos recorrentes e pontuais da família.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-5 overflow-hidden">
         {/* Recorrentes */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
