@@ -2,8 +2,8 @@
 
 -- 0) Agenda multi-pessoa (backward-compatible)
 -- Novos inserts devem gravar person_ids (uuid[]), mantendo person_id legado como fallback.
-alter table recurring_items add column if not exists person_ids uuid[] default null;
-alter table one_off_items add column if not exists person_ids uuid[] default null;
+alter table recurring_items add column if not exists person_ids uuid[] default '{}';
+alter table one_off_items add column if not exists person_ids uuid[] default '{}';
 
 -- 0b) Agenda com horário de início/fim (backward-compatible)
 alter table recurring_items add column if not exists start_time time default null;
@@ -135,15 +135,8 @@ create policy "auth_all_settings" on settings
   for all using (auth.role() = 'authenticated')
   with check (auth.role() = 'authenticated');
 
--- 6) person_ids: multi-person events (array de UUIDs)
--- Adicionar coluna person_ids em recurring_items e one_off_items.
--- person_id (singular) é mantido para backward compat.
-alter table recurring_items
-  add column if not exists person_ids uuid[] default '{}';
-alter table one_off_items
-  add column if not exists person_ids uuid[] default '{}';
-
--- Migrar dados existentes: copiar person_id → person_ids onde vazio
+-- 6) person_ids: migrar dados existentes (person_id → person_ids)
+-- Rodar APÓS a seção 0 ter criado as colunas person_ids.
 update recurring_items
   set person_ids = array[person_id]
   where person_id is not null and (person_ids is null or person_ids = '{}');
@@ -151,12 +144,11 @@ update one_off_items
   set person_ids = array[person_id]
   where person_id is not null and (person_ids is null or person_ids = '{}');
 
--- 7) end_time_text: horário de término dos eventos
-alter table recurring_items add column if not exists end_time_text text;
-alter table one_off_items add column if not exists end_time_text text;
-
--- 8) Auth: email+password (não OTP)
+-- 7) Auth: email+password (não OTP)
 -- O app usa signInWithPassword / signUp. Para permitir sign-up sem
 -- confirmação de e-mail (recomendado para uso doméstico):
 --   Supabase Dashboard → Authentication → Providers → Email
 --   Desmarcar "Confirm email"
+
+-- NOTA: a coluna end_time_text (text) foi descartada.
+-- O app usa start_time / end_time (type time) — veja seção 0b.
