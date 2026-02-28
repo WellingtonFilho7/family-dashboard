@@ -15,6 +15,7 @@ export interface RecurringItem {
   dayOfWeek: number; // 1 = Sunday ... 7 = Saturday
   timeText: string;
   personId: string;
+  personIds: string[]; // always populated; falls back to [personId]
   isPrivate?: boolean;
 }
 
@@ -24,6 +25,7 @@ export interface OneOffItem {
   date: string; // ISO date
   timeText: string;
   personId: string;
+  personIds: string[]; // always populated; falls back to [personId]
   isPrivate?: boolean;
 }
 
@@ -32,8 +34,8 @@ export interface CalendarItem {
   title: string;
   timeText: string;
   date: Date;
-  personId: string;
-  personColor: string;
+  personIds: string[];
+  personColors: string[];
 }
 
 export interface ReplenishItem {

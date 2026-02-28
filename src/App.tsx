@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { QRCodeCanvas } from 'qrcode.react';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { addDays, format, formatISO, isSameDay } from 'date-fns';
@@ -445,77 +445,167 @@ function Sidebar({
   );
 }
 
+const TIMELINE_START = 7;
+const TIMELINE_END = 22;
+const TIMELINE_RANGE = TIMELINE_END - TIMELINE_START;
+
+function parseHour(timeText: string | null | undefined): number | null {
+  if (!timeText) return null;
+  const m = timeText.match(/^(\d{1,2})[h:](\d{0,2})/);
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  const min = m[2] ? parseInt(m[2], 10) : 0;
+  if (h < 0 || h > 23) return null;
+  return h + min / 60;
+}
+
 function CalendarGrid({
   loading,
   days,
-  people,
 }: {
   loading: boolean;
   days: { date: Date; items: CalendarItem[] }[];
   people: Person[];
 }) {
   const desktopOverride = useDesktopOverrideValue();
-  const personById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
-  const fallbackColor = '#0EA5E9';
   const now = useMemo(() => new Date(), []);
+  const [selectedDay, setSelectedDay] = useState<Date>(now);
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSelectDay = useCallback((date: Date) => {
+    setSelectedDay(date);
+    if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    resetTimerRef.current = setTimeout(() => setSelectedDay(new Date()), 60_000);
+  }, []);
+
+  useEffect(() => () => { if (resetTimerRef.current) clearTimeout(resetTimerRef.current); }, []);
 
   return (
     <div
       className={cn(
-        'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 xl:flex-1',
-        desktopOverride && 'grid-cols-7 flex-1'
+        'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3',
+        'xl:flex xl:gap-3 xl:flex-1',
+        desktopOverride && 'flex gap-3 flex-1',
       )}
     >
       {days.map(({ date, items }) => {
         const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' });
         const today = isSameDay(date, now);
-        const maxEvents = 8;
-        const overflow = Math.max(items.length - maxEvents, 0);
+        const expanded = isSameDay(date, selectedDay);
+
+        const sortedItems = [...items].sort((a, b) => {
+          const ha = parseHour(a.timeText);
+          const hb = parseHour(b.timeText);
+          if (ha == null && hb == null) return 0;
+          if (ha == null) return -1;
+          if (hb == null) return 1;
+          return ha - hb;
+        });
+        const untimedItems = sortedItems.filter((item) => parseHour(item.timeText) == null);
+        const timedItems = sortedItems.filter((item) => parseHour(item.timeText) != null);
+
         return (
           <div
             key={formatISO(date)}
+            onClick={() => handleSelectDay(date)}
+            style={{ flexGrow: expanded ? 3 : 1, flexShrink: 1, flexBasis: 0, minWidth: 0 }}
             className={cn(
-              'flex flex-col rounded-lg border bg-card p-3',
-              today && 'ring-2 ring-primary/40 bg-primary/5 dark:bg-primary/10'
+              'flex flex-col rounded-lg border bg-card p-3 cursor-pointer select-none transition-all duration-300 overflow-hidden',
+              today && 'ring-2 ring-primary/40 bg-primary/5 dark:bg-primary/10',
             )}
           >
-            <div className="flex items-baseline gap-1.5 mb-2">
+            {/* Day header */}
+            <div className="flex items-baseline gap-1.5 mb-2 shrink-0">
               <p className={cn(
                 'text-xs xl:text-sm uppercase tracking-wide',
-                today ? 'text-primary font-semibold' : 'text-muted-foreground'
+                today ? 'text-primary font-semibold' : 'text-muted-foreground',
               )}>{dayName}</p>
               <p className={cn(
                 'text-2xl xl:text-3xl font-semibold leading-tight',
-                today && 'text-primary'
+                today && 'text-primary',
               )}>{format(date, 'dd')}</p>
             </div>
 
-            <div className="flex flex-col gap-1.5 xl:gap-2 flex-1">
-              {loading ? (
-                <Skeleton className="h-4 w-full" />
-              ) : items.length === 0 ? (
+            {/* Mobile: always show full list (grid layout, no expansion needed) */}
+            <div className={cn('flex flex-col gap-1.5 flex-1 xl:hidden', desktopOverride && 'hidden')}>
+              {loading ? <Skeleton className="h-4 w-full" /> : sortedItems.length === 0 ? (
                 <p className="text-xs text-muted-foreground/50">—</p>
-              ) : (
-                items.slice(0, maxEvents).map((item) => {
-                  const person = personById.get(item.personId);
-                  const dotColor = person?.color ?? item.personColor ?? fallbackColor;
-                  return (
-                    <div key={item.id} className="flex items-center gap-1.5 min-w-0">
-                      <span className="h-2 w-2 xl:h-3 xl:w-3 shrink-0 rounded-full" style={{ backgroundColor: dotColor }} />
-                      <p className="text-sm xl:text-base truncate">
-                        <span className="font-medium">{item.title}</span>
-                        {item.timeText ? (
-                          <span className="text-muted-foreground"> · {item.timeText}</span>
-                        ) : null}
-                      </p>
-                    </div>
-                  );
-                })
-              )}
-              {overflow > 0 ? (
-                <p className="text-xs text-muted-foreground">+{overflow}</p>
-              ) : null}
+              ) : sortedItems.slice(0, 8).map((item) => (
+                <div key={item.id} className="flex items-center gap-1 min-w-0">
+                  {item.personColors.map((color, i) => (
+                    <span key={i} className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                  ))}
+                  <p className="text-sm truncate">
+                    <span className="font-medium">{item.title}</span>
+                    {item.timeText ? <span className="text-muted-foreground"> · {item.timeText}</span> : null}
+                  </p>
+                </div>
+              ))}
             </div>
+
+            {/* Kiosk compact: dots only (non-expanded) */}
+            {!expanded && (
+              <div className={cn('hidden flex-col gap-1 flex-1', 'xl:flex', desktopOverride && 'flex')}>
+                {loading ? <Skeleton className="h-3 w-full" /> : items.length === 0 ? (
+                  <span className="text-muted-foreground/30 text-xs">—</span>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {items.map((item) =>
+                      item.personColors.map((color, i) => (
+                        <span key={`${item.id}-${i}`} className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Kiosk expanded: full events with time positioning */}
+            {expanded && (
+              <div className={cn('hidden flex-col flex-1 min-h-0', 'xl:flex', desktopOverride && 'flex')}>
+                {loading ? (
+                  <Skeleton className="h-4 w-full" />
+                ) : sortedItems.length === 0 ? (
+                  <p className="text-xs text-muted-foreground/50">—</p>
+                ) : (
+                  <>
+                    {/* Untimed events at top */}
+                    {untimedItems.map((item) => (
+                      <div key={item.id} className="flex items-center gap-1.5 mb-1.5 min-w-0">
+                        {item.personColors.map((color, i) => (
+                          <span key={i} className="h-2.5 w-2.5 xl:h-3 xl:w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                        ))}
+                        <p className="text-sm xl:text-base font-medium truncate">{item.title}</p>
+                      </div>
+                    ))}
+                    {/* Timeline for timed events */}
+                    {timedItems.length > 0 && (
+                      <div className="relative flex-1 min-h-[200px] xl:min-h-[240px]">
+                        {timedItems.map((item) => {
+                          const hour = parseHour(item.timeText)!;
+                          const pct = Math.max(0, Math.min(95, ((hour - TIMELINE_START) / TIMELINE_RANGE) * 100));
+                          return (
+                            <div
+                              key={item.id}
+                              className="absolute left-0 right-0 flex items-center gap-1.5 min-w-0"
+                              style={{ top: `${pct}%` }}
+                            >
+                              {item.personColors.map((color, i) => (
+                                <span key={i} className="h-2.5 w-2.5 xl:h-3 xl:w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                              ))}
+                              <p className="text-sm xl:text-base truncate">
+                                <span className="font-medium">{item.title}</span>
+                                <span className="text-muted-foreground text-xs xl:text-sm"> · {item.timeText}</span>
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
         );
       })}

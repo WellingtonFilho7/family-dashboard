@@ -218,28 +218,32 @@ export function useKioskData(
     const recurringItems: CalendarItem[] = data.recurringItems.map((item) => {
       const offset = Math.max(0, Math.min(6, item.dayOfWeek - 1));
       const targetDate = addDays(weekStart, offset);
-      const person = personById.get(item.personId);
+      const personColors = item.personIds.map(
+        (pid) => personById.get(pid)?.color ?? '#0EA5E9'
+      );
       return {
         id: item.id,
         title: item.title,
         timeText: item.timeText,
         date: targetDate,
-        personId: item.personId,
-        personColor: person?.color ?? '#0EA5E9',
+        personIds: item.personIds,
+        personColors,
       };
     });
 
     const oneOffItems: CalendarItem[] = data.oneOffItems
       .map((item) => {
         const date = parseDateOnly(item.date);
-        const person = personById.get(item.personId);
+        const personColors = item.personIds.map(
+          (pid) => personById.get(pid)?.color ?? '#0EA5E9'
+        );
         return {
           id: item.id,
           title: item.title,
           timeText: item.timeText,
           date,
-          personId: item.personId,
-          personColor: person?.color ?? '#0EA5E9',
+          personIds: item.personIds,
+          personColors,
         };
       })
       .filter(
@@ -446,23 +450,41 @@ const toPerson = (row: any): Person => ({
   sortOrder: row.sort_order ?? 0,
 });
 
-const toRecurring = (row: any): RecurringItem => ({
-  id: row.id,
-  title: row.title,
-  dayOfWeek: Number(row.day_of_week ?? 1),
-  timeText: row.time_text,
-  personId: row.person_id,
-  isPrivate: Boolean(row.is_private),
-});
+const toRecurring = (row: any): RecurringItem => {
+  const personIds: string[] =
+    Array.isArray(row.person_ids) && row.person_ids.length > 0
+      ? row.person_ids
+      : row.person_id
+        ? [row.person_id]
+        : [];
+  return {
+    id: row.id,
+    title: row.title,
+    dayOfWeek: Number(row.day_of_week ?? 1),
+    timeText: row.time_text,
+    personId: personIds[0] ?? row.person_id,
+    personIds,
+    isPrivate: Boolean(row.is_private),
+  };
+};
 
-const toOneOff = (row: any): OneOffItem => ({
-  id: row.id,
-  title: row.title,
-  date: row.date,
-  timeText: row.time_text,
-  personId: row.person_id,
-  isPrivate: Boolean(row.is_private),
-});
+const toOneOff = (row: any): OneOffItem => {
+  const personIds: string[] =
+    Array.isArray(row.person_ids) && row.person_ids.length > 0
+      ? row.person_ids
+      : row.person_id
+        ? [row.person_id]
+        : [];
+  return {
+    id: row.id,
+    title: row.title,
+    date: row.date,
+    timeText: row.time_text,
+    personId: personIds[0] ?? row.person_id,
+    personIds,
+    isPrivate: Boolean(row.is_private),
+  };
+};
 
 const toReplenish = (row: any): ReplenishItem => ({
   id: row.id,
