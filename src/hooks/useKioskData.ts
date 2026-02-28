@@ -214,38 +214,44 @@ export function useKioskData(
   const calendarByDay = useMemo(() => {
     if (!data) return [];
     const personById = new Map(data.people.map((p) => [p.id, p]));
+    const resolvePersonIds = (item: { personId: string; personIds?: string[] }) => {
+      if (item.personIds?.length) return item.personIds;
+      return item.personId ? [item.personId] : [];
+    };
+    const resolvePersonColors = (personIds: string[]) => {
+      if (personIds.length === 0) return ['#0EA5E9'];
+      return personIds.map((pid) => personById.get(pid)?.color ?? '#0EA5E9');
+    };
 
     const recurringItems: CalendarItem[] = data.recurringItems.map((item) => {
       const offset = Math.max(0, Math.min(6, item.dayOfWeek - 1));
       const targetDate = addDays(weekStart, offset);
-      const personColors = item.personIds.map(
-        (pid) => personById.get(pid)?.color ?? '#0EA5E9'
-      );
+      const personIds = resolvePersonIds(item);
       return {
         id: item.id,
         title: item.title,
         timeText: item.timeText,
-        endTimeText: item.endTimeText,
+        startTime: item.startTime ?? null,
+        endTime: item.endTime ?? null,
         date: targetDate,
-        personIds: item.personIds,
-        personColors,
+        personIds,
+        personColors: resolvePersonColors(personIds),
       };
     });
 
     const oneOffItems: CalendarItem[] = data.oneOffItems
       .map((item) => {
         const date = parseDateOnly(item.date);
-        const personColors = item.personIds.map(
-          (pid) => personById.get(pid)?.color ?? '#0EA5E9'
-        );
+        const personIds = resolvePersonIds(item);
         return {
           id: item.id,
           title: item.title,
           timeText: item.timeText,
-          endTimeText: item.endTimeText,
+          startTime: item.startTime ?? null,
+          endTime: item.endTime ?? null,
           date,
-          personIds: item.personIds,
-          personColors,
+          personIds,
+          personColors: resolvePersonColors(personIds),
         };
       })
       .filter(
@@ -452,39 +458,62 @@ const toPerson = (row: any): Person => ({
   sortOrder: row.sort_order ?? 0,
 });
 
+const normalizeDbTime = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const match = value.trim().match(/^([01]?\d|2[0-3]):([0-5]\d)/);
+  if (!match) return null;
+  return `${match[1].padStart(2, '0')}:${match[2]}`;
+};
+
 const toRecurring = (row: any): RecurringItem => {
-  const personIds: string[] =
-    Array.isArray(row.person_ids) && row.person_ids.length > 0
-      ? row.person_ids
-      : row.person_id
-        ? [row.person_id]
-        : [];
+  const rowPersonIds = Array.isArray(row.person_ids)
+    ? row.person_ids.filter(Boolean)
+    : [];
+  const personIds = rowPersonIds.length > 0
+    ? rowPersonIds
+    : row.person_id
+      ? [row.person_id]
+      : [];
+  const personId = row.person_id ?? personIds[0] ?? '';
+  const startTime = normalizeDbTime(row.start_time);
+  const endTime = normalizeDbTime(row.end_time);
+  const timeText = row.time_text ?? (startTime && endTime ? `${startTime}–${endTime}` : startTime ?? '');
+
   return {
     id: row.id,
     title: row.title,
     dayOfWeek: Number(row.day_of_week ?? 1),
-    timeText: row.time_text,
-    endTimeText: row.end_time_text ?? undefined,
-    personId: personIds[0] ?? row.person_id,
+    timeText,
+    startTime,
+    endTime,
+    personId,
     personIds,
     isPrivate: Boolean(row.is_private),
   };
 };
 
 const toOneOff = (row: any): OneOffItem => {
-  const personIds: string[] =
-    Array.isArray(row.person_ids) && row.person_ids.length > 0
-      ? row.person_ids
-      : row.person_id
-        ? [row.person_id]
-        : [];
+  const rowPersonIds = Array.isArray(row.person_ids)
+    ? row.person_ids.filter(Boolean)
+    : [];
+  const personIds = rowPersonIds.length > 0
+    ? rowPersonIds
+    : row.person_id
+      ? [row.person_id]
+      : [];
+  const personId = row.person_id ?? personIds[0] ?? '';
+  const startTime = normalizeDbTime(row.start_time);
+  const endTime = normalizeDbTime(row.end_time);
+  const timeText = row.time_text ?? (startTime && endTime ? `${startTime}–${endTime}` : startTime ?? '');
+
   return {
     id: row.id,
     title: row.title,
     date: row.date,
-    timeText: row.time_text,
-    endTimeText: row.end_time_text ?? undefined,
-    personId: personIds[0] ?? row.person_id,
+    timeText,
+    startTime,
+    endTime,
+    personId,
     personIds,
     isPrivate: Boolean(row.is_private),
   };

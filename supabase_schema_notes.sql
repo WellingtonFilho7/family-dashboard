@@ -1,5 +1,26 @@
 -- Ajustes solicitados (rodar via Supabase SQL editor ou migration)
 
+-- 0) Agenda multi-pessoa (backward-compatible)
+-- Novos inserts devem gravar person_ids (uuid[]), mantendo person_id legado como fallback.
+alter table recurring_items add column if not exists person_ids uuid[] default null;
+alter table one_off_items add column if not exists person_ids uuid[] default null;
+
+-- 0b) Agenda com horário de início/fim (backward-compatible)
+alter table recurring_items add column if not exists start_time time default null;
+alter table recurring_items add column if not exists end_time time default null;
+alter table one_off_items add column if not exists start_time time default null;
+alter table one_off_items add column if not exists end_time time default null;
+
+-- End time deve ser após start time quando ambos existirem.
+alter table recurring_items drop constraint if exists recurring_items_time_window_check;
+alter table recurring_items
+  add constraint recurring_items_time_window_check
+  check (start_time is null or end_time is null or end_time > start_time);
+alter table one_off_items drop constraint if exists one_off_items_time_window_check;
+alter table one_off_items
+  add constraint one_off_items_time_window_check
+  check (start_time is null or end_time is null or end_time > start_time);
+
 -- 1) kid_routine_checks: unique por template + date e default de completed=true
 alter table kid_routine_checks
   add constraint kid_routine_checks_template_date_uniq unique (template_id, date);
