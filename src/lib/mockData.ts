@@ -20,6 +20,7 @@ export const mockData: FamilyData = {
       dayOfWeek: 2,
       timeText: '07:30',
       personId: 'leia',
+      personIds: ['leia'],
     },
     {
       id: 'r2',
@@ -27,6 +28,7 @@ export const mockData: FamilyData = {
       dayOfWeek: 3,
       timeText: '18:00',
       personId: 'benjamin',
+      personIds: ['benjamin'],
     },
     {
       id: 'r3',
@@ -34,6 +36,7 @@ export const mockData: FamilyData = {
       dayOfWeek: 5,
       timeText: '16:30',
       personId: 'jose',
+      personIds: ['jose'],
       isPrivate: true,
     },
     {
@@ -42,6 +45,7 @@ export const mockData: FamilyData = {
       dayOfWeek: 6,
       timeText: '20:00',
       personId: 'pai',
+      personIds: ['pai', 'leia'],
     },
   ],
   oneOffItems: [
@@ -51,6 +55,7 @@ export const mockData: FamilyData = {
       date: addDays(sunday, 0).toISOString(),
       timeText: '19:00',
       personId: 'leia',
+      personIds: ['leia'],
     },
     {
       id: 'o2',
@@ -58,6 +63,7 @@ export const mockData: FamilyData = {
       date: addDays(sunday, 3).toISOString(),
       timeText: '09:20',
       personId: 'judah',
+      personIds: ['judah'],
     },
     {
       id: 'o3',
@@ -65,6 +71,7 @@ export const mockData: FamilyData = {
       date: addDays(sunday, 6).toISOString(),
       timeText: '15:00',
       personId: 'benjamin',
+      personIds: ['benjamin'],
       isPrivate: true,
     },
   ],

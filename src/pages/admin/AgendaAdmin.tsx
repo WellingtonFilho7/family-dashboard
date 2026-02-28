@@ -66,16 +66,16 @@ export function AgendaAdmin({
     if (!requireAuth(hasSession)) return;
     if (!recForm.title || recForm.personIds.length === 0) return toast.error('Título e pelo menos uma pessoa são obrigatórios');
     try {
-      const rows = recForm.personIds.map((pid) => ({
+      const { error } = await supabase!.from('recurring_items').insert({
         title: recForm.title,
         day_of_week: recForm.dayOfWeek,
         time_text: recForm.timeText || null,
-        person_id: pid,
+        person_id: recForm.personIds[0] ?? null,
+        person_ids: recForm.personIds,
         is_private: false,
-      }));
-      const { error } = await supabase!.from('recurring_items').insert(rows);
+      });
       if (error) return toast.error(error.message);
-      toast.success(rows.length > 1 ? `${rows.length} eventos criados` : 'Evento recorrente criado');
+      toast.success('Evento recorrente criado');
       setRecForm((prev) => ({ ...prev, title: '', timeText: '', personIds: [] }));
       setShowRecForm(false);
       refresh();
@@ -90,16 +90,16 @@ export function AgendaAdmin({
       return toast.error('Título, pelo menos uma pessoa e data são obrigatórios');
     }
     try {
-      const rows = oneOffForm.personIds.map((pid) => ({
+      const { error } = await supabase!.from('one_off_items').insert({
         title: oneOffForm.title,
         date: oneOffForm.date,
         time_text: oneOffForm.timeText || null,
-        person_id: pid,
+        person_id: oneOffForm.personIds[0] ?? null,
+        person_ids: oneOffForm.personIds,
         is_private: false,
-      }));
-      const { error } = await supabase!.from('one_off_items').insert(rows);
+      });
       if (error) return toast.error(error.message);
-      toast.success(rows.length > 1 ? `${rows.length} eventos criados` : 'Evento pontual criado');
+      toast.success('Evento pontual criado');
       setOneOffForm((prev) => ({ ...prev, title: '', timeText: '', personIds: [] }));
       setShowOneOffForm(false);
       refresh();
@@ -129,7 +129,10 @@ export function AgendaAdmin({
     else { toast.success('Removido'); refresh(); }
   };
 
-  const personName = (id: string) => people.find((p) => p.id === id)?.name ?? 'Pessoa';
+  const personNames = (item: { personIds?: string[]; personId: string }) => {
+    const ids = item.personIds?.length ? item.personIds : [item.personId];
+    return ids.map((id) => people.find((p) => p.id === id)?.name ?? '?').join(', ');
+  };
 
   return (
     <Card>
@@ -188,7 +191,7 @@ export function AgendaAdmin({
                     <EditableText value={item.title} onSave={(t) => updateTitle('recurring_items', item.id, t)} disabled={disabled} />
                     <p className="text-xs text-muted-foreground">
                       {dayNames[item.dayOfWeek] ?? `Dia ${item.dayOfWeek}`}
-                      {item.timeText ? ` • ${item.timeText}` : ''} • {personName(item.personId)}
+                      {item.timeText ? ` • ${item.timeText}` : ''} • {personNames(item)}
                       {item.isPrivate ? ' • privado' : ''}
                     </p>
                   </div>
@@ -260,7 +263,7 @@ export function AgendaAdmin({
                   <div className="min-w-0">
                     <EditableText value={item.title} onSave={(t) => updateTitle('one_off_items', item.id, t)} disabled={disabled} />
                     <p className="text-xs text-muted-foreground">
-                      {item.date}{item.timeText ? ` • ${item.timeText}` : ''} • {personName(item.personId)}
+                      {item.date}{item.timeText ? ` • ${item.timeText}` : ''} • {personNames(item)}
                       {item.isPrivate ? ' • privado' : ''}
                     </p>
                   </div>

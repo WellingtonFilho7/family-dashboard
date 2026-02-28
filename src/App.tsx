@@ -341,7 +341,7 @@ function PanelPage() {
               desktopOverride && 'flex-1 min-w-0 flex flex-col'
             )}>
               <ErrorBoundary sectionName="Calendário">
-                <CalendarGrid loading={loading} days={calendarByDay} people={data?.people ?? []} />
+                <CalendarGrid loading={loading} days={calendarByDay} />
               </ErrorBoundary>
             </div>
 
@@ -465,7 +465,6 @@ function CalendarGrid({
 }: {
   loading: boolean;
   days: { date: Date; items: CalendarItem[] }[];
-  people: Person[];
 }) {
   const desktopOverride = useDesktopOverrideValue();
   const now = useMemo(() => new Date(), []);
@@ -581,13 +580,23 @@ function CalendarGrid({
                     {/* Timeline for timed events */}
                     {timedItems.length > 0 && (
                       <div className="relative flex-1 min-h-[200px] xl:min-h-[240px]">
+                        {/* Hour markers */}
+                        {[8, 12, 18].map((h) => {
+                          const pct = ((h - TIMELINE_START) / TIMELINE_RANGE) * 100;
+                          return (
+                            <div key={h} className="absolute left-0 right-0 flex items-center pointer-events-none" style={{ top: `${pct}%` }}>
+                              <span className="text-[10px] text-muted-foreground/40 tabular-nums w-6 shrink-0">{h}h</span>
+                              <div className="flex-1 border-t border-dashed border-muted-foreground/15" />
+                            </div>
+                          );
+                        })}
                         {timedItems.map((item) => {
                           const hour = parseHour(item.timeText)!;
                           const pct = Math.max(0, Math.min(95, ((hour - TIMELINE_START) / TIMELINE_RANGE) * 100));
                           return (
                             <div
                               key={item.id}
-                              className="absolute left-0 right-0 flex items-center gap-1.5 min-w-0"
+                              className="absolute left-7 right-0 flex items-center gap-1.5 min-w-0"
                               style={{ top: `${pct}%` }}
                             >
                               {item.personColors.map((color, i) => (
