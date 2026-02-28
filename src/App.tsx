@@ -585,38 +585,14 @@ function CalendarGrid({
         const timedIds = new Set(timedEntries.map((entry) => entry.item.id));
         const untimedItems = items.filter((item) => !timedIds.has(item.id));
 
-        const laneLayouts = (() => {
+        const stackedTimedEntries = (() => {
           if (timedEntries.length === 0) return [];
-          const clusters: { item: CalendarItem; startHour: number; endHour: number }[][] = [];
-          let activeCluster: { item: CalendarItem; startHour: number; endHour: number }[] = [];
-          let clusterMaxEnd = -Infinity;
-
-          timedEntries.forEach((entry) => {
-            if (activeCluster.length === 0 || entry.startHour < clusterMaxEnd) {
-              activeCluster.push(entry);
-              clusterMaxEnd = Math.max(clusterMaxEnd, entry.endHour);
-              return;
-            }
-            clusters.push(activeCluster);
-            activeCluster = [entry];
-            clusterMaxEnd = entry.endHour;
-          });
-          if (activeCluster.length > 0) clusters.push(activeCluster);
-
-          return clusters.flatMap((cluster) => {
-            const laneEnds: number[] = [];
-            const placed = cluster.map((entry) => {
-              const laneIndex = laneEnds.findIndex((laneEnd) => laneEnd <= entry.startHour + 1e-6);
-              if (laneIndex === -1) {
-                laneEnds.push(entry.endHour);
-                return { ...entry, lane: laneEnds.length - 1 };
-              }
-              laneEnds[laneIndex] = entry.endHour;
-              return { ...entry, lane: laneIndex };
-            });
-
-            const laneCount = laneEnds.length || 1;
-            return placed.map((entry) => ({ ...entry, laneCount }));
+          const collisionsByWindow = new Map<string, number>();
+          return timedEntries.map((entry) => {
+            const key = `${entry.startHour.toFixed(4)}-${entry.endHour.toFixed(4)}`;
+            const stackIndex = collisionsByWindow.get(key) ?? 0;
+            collisionsByWindow.set(key, stackIndex + 1);
+            return { ...entry, stackIndex };
           });
         })();
 
@@ -723,27 +699,23 @@ function CalendarGrid({
                     ) : null}
 
                     {(() => {
-                      const timedLayouts = laneLayouts.map((entry, idx) => {
+                      const timedLayouts = stackedTimedEntries.map((entry, idx) => {
                         const durationPercent = ((entry.endHour - entry.startHour) / TIMELINE_VISIBLE_HOURS) * 100;
                         const heightPercent = Math.max(MIN_EVENT_HEIGHT_PERCENT, durationPercent);
                         const rawTopPercent =
                           ((entry.startHour - TIMELINE_START_HOUR) / TIMELINE_VISIBLE_HOURS) * 100;
+                        const stackOffsetPx = entry.stackIndex * 46;
                         const topPercent = Math.max(
                           0,
                           Math.min(rawTopPercent, 100 - heightPercent)
                         );
-                        const laneWidthPercent = 100 / entry.laneCount;
-                        const laneGapPercent = entry.laneCount > 1 ? 1 : 0;
-                        const widthPercent = Math.max(2, laneWidthPercent - laneGapPercent);
-                        const leftPercent = (entry.lane * laneWidthPercent) + laneGapPercent / 2;
 
                         return {
                           id: `${entry.item.id}-${idx}`,
                           item: entry.item,
                           topPercent,
                           heightPercent,
-                          leftPercent,
-                          widthPercent,
+                          stackOffsetPx,
                         };
                       });
 
@@ -768,9 +740,9 @@ function CalendarGrid({
                                 key={layout.id}
                                 className="absolute overflow-hidden rounded-md border bg-card/95 px-2.5 py-1.5 shadow-sm"
                                 style={{
-                                  top: `${layout.topPercent}%`,
-                                  left: `${layout.leftPercent}%`,
-                                  width: `${layout.widthPercent}%`,
+                                  top: `calc(${layout.topPercent}% + ${layout.stackOffsetPx}px)`,
+                                  left: '0%',
+                                  width: '100%',
                                   height: `max(${layout.heightPercent}%, 42px)`,
                                 }}
                               >

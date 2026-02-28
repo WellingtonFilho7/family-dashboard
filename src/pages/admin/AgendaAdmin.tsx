@@ -315,28 +315,41 @@ export function AgendaAdmin({
           {showRecForm && (
             <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
               <Input placeholder="Título" value={recForm.title} onChange={(e) => setRecForm({ ...recForm, title: e.target.value })} disabled={disabled} />
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base" value={recForm.dayOfWeek} onChange={(e) => setRecForm({ ...recForm, dayOfWeek: Number(e.target.value) })} disabled={disabled}>
-                  {dayOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                </select>
-                <Input
-                  type="time"
-                  step={60}
-                  min="00:00"
-                  max="23:59"
-                  value={recForm.startTime}
-                  onChange={(e) => setRecForm({ ...recForm, startTime: e.target.value })}
-                  disabled={disabled}
-                />
-                <Input
-                  type="time"
-                  step={60}
-                  min="00:00"
-                  max="23:59"
-                  value={recForm.endTime}
-                  onChange={(e) => setRecForm({ ...recForm, endTime: e.target.value })}
-                  disabled={disabled}
-                />
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+                <div className="min-w-0">
+                  <select
+                    className="h-11 w-full min-w-0 rounded-lg border bg-background px-3 text-base text-foreground"
+                    value={recForm.dayOfWeek}
+                    onChange={(e) => setRecForm({ ...recForm, dayOfWeek: Number(e.target.value) })}
+                    disabled={disabled}
+                  >
+                    {dayOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  </select>
+                </div>
+                <div className="min-w-0">
+                  <Input
+                    type="time"
+                    step={60}
+                    min="00:00"
+                    max="23:59"
+                    className="min-w-0"
+                    value={recForm.startTime}
+                    onChange={(e) => setRecForm({ ...recForm, startTime: e.target.value })}
+                    disabled={disabled}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <Input
+                    type="time"
+                    step={60}
+                    min="00:00"
+                    max="23:59"
+                    className="min-w-0"
+                    value={recForm.endTime}
+                    onChange={(e) => setRecForm({ ...recForm, endTime: e.target.value })}
+                    disabled={disabled}
+                  />
+                </div>
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium">Pessoas</p>
@@ -424,26 +437,40 @@ export function AgendaAdmin({
           {showOneOffForm && (
             <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
               <Input placeholder="Título" value={oneOffForm.title} onChange={(e) => setOneOffForm({ ...oneOffForm, title: e.target.value })} disabled={disabled} />
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <Input type="date" value={oneOffForm.date} onChange={(e) => setOneOffForm({ ...oneOffForm, date: e.target.value })} disabled={disabled} />
-                <Input
-                  type="time"
-                  step={60}
-                  min="00:00"
-                  max="23:59"
-                  value={oneOffForm.startTime}
-                  onChange={(e) => setOneOffForm({ ...oneOffForm, startTime: e.target.value })}
-                  disabled={disabled}
-                />
-                <Input
-                  type="time"
-                  step={60}
-                  min="00:00"
-                  max="23:59"
-                  value={oneOffForm.endTime}
-                  onChange={(e) => setOneOffForm({ ...oneOffForm, endTime: e.target.value })}
-                  disabled={disabled}
-                />
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+                <div className="min-w-0">
+                  <Input
+                    type="date"
+                    className="min-w-0"
+                    value={oneOffForm.date}
+                    onChange={(e) => setOneOffForm({ ...oneOffForm, date: e.target.value })}
+                    disabled={disabled}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <Input
+                    type="time"
+                    step={60}
+                    min="00:00"
+                    max="23:59"
+                    className="min-w-0"
+                    value={oneOffForm.startTime}
+                    onChange={(e) => setOneOffForm({ ...oneOffForm, startTime: e.target.value })}
+                    disabled={disabled}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <Input
+                    type="time"
+                    step={60}
+                    min="00:00"
+                    max="23:59"
+                    className="min-w-0"
+                    value={oneOffForm.endTime}
+                    onChange={(e) => setOneOffForm({ ...oneOffForm, endTime: e.target.value })}
+                    disabled={disabled}
+                  />
+                </div>
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium">Pessoas</p>
@@ -516,7 +543,7 @@ export function AgendaAdmin({
         </div>
 
         <Dialog open={Boolean(editForm)} onOpenChange={(open) => !open && setEditForm(null)}>
-          <DialogContent className="w-[min(94vw,560px)] max-h-[90dvh] overflow-y-auto">
+          <DialogContent className="w-[min(96vw,600px)] max-h-[90dvh] overflow-x-hidden overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Editar evento</DialogTitle>
               <DialogDescription>
@@ -559,7 +586,7 @@ export function AgendaAdmin({
                   />
                 )}
 
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                   <div className="min-w-0">
                     <Input
                       type="time"
