@@ -509,7 +509,7 @@ function CalendarGrid({
             onClick={() => handleSelectDay(date)}
             style={{ flexGrow: expanded ? 3 : 1, flexShrink: 1, flexBasis: 0, minWidth: 0 }}
             className={cn(
-              'flex flex-col rounded-lg border bg-card p-3 cursor-pointer select-none transition-all duration-300 overflow-hidden',
+              'flex flex-col rounded-lg border bg-card p-3 cursor-pointer select-none transition-all duration-300 overflow-hidden active:scale-[0.98]',
               today && 'ring-2 ring-primary/40 bg-primary/5 dark:bg-primary/10',
             )}
           >
@@ -529,37 +529,49 @@ function CalendarGrid({
             <div className={cn('flex flex-col gap-1.5 flex-1 xl:hidden', desktopOverride && 'hidden')}>
               {loading ? <Skeleton className="h-4 w-full" /> : sortedItems.length === 0 ? (
                 <p className="text-xs text-muted-foreground/50">—</p>
-              ) : sortedItems.slice(0, 8).map((item) => (
-                <div key={item.id} className="flex items-center gap-1 min-w-0">
-                  {item.personColors.map((color, i) => (
-                    <span key={i} className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+              ) : (
+                <>
+                  {sortedItems.slice(0, 8).map((item) => (
+                    <div key={item.id} className="flex items-center gap-1 min-w-0">
+                      {item.personColors.map((color, i) => (
+                        <span key={i} className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                      ))}
+                      <p className="text-sm truncate">
+                        <span className="font-medium">{item.title}</span>
+                        {item.timeText ? <span className="text-muted-foreground"> · {item.timeText}{item.endTimeText ? `–${item.endTimeText}` : ''}</span> : null}
+                      </p>
+                    </div>
                   ))}
-                  <p className="text-sm truncate">
-                    <span className="font-medium">{item.title}</span>
-                    {item.timeText ? <span className="text-muted-foreground"> · {item.timeText}</span> : null}
-                  </p>
-                </div>
-              ))}
+                  {sortedItems.length > 8 && (
+                    <p className="text-xs text-muted-foreground">+{sortedItems.length - 8}</p>
+                  )}
+                </>
+              )}
             </div>
 
-            {/* Kiosk compact: dots only (non-expanded) */}
+            {/* Kiosk compact: dots + event count (non-expanded) */}
             {!expanded && (
-              <div className={cn('hidden flex-col gap-1 flex-1', 'xl:flex', desktopOverride && 'flex')}>
+              <div className={cn('hidden flex-col gap-1.5 flex-1', 'xl:flex', desktopOverride && 'flex')}>
                 {loading ? <Skeleton className="h-3 w-full" /> : items.length === 0 ? (
                   <span className="text-muted-foreground/30 text-xs">—</span>
                 ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {items.map((item) =>
-                      item.personColors.map((color, i) => (
-                        <span key={`${item.id}-${i}`} className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
-                      ))
-                    )}
-                  </div>
+                  <>
+                    <div className="flex flex-wrap gap-1.5">
+                      {items.map((item) =>
+                        item.personColors.map((color, i) => (
+                          <span key={`${item.id}-${i}`} className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
+                        ))
+                      )}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground/60">
+                      {items.length} evento{items.length !== 1 ? 's' : ''}
+                    </span>
+                  </>
                 )}
               </div>
             )}
 
-            {/* Kiosk expanded: full events with time positioning */}
+            {/* Kiosk expanded: duration blocks with lane detection */}
             {expanded && (
               <div className={cn('hidden flex-col flex-1 min-h-0', 'xl:flex', desktopOverride && 'flex')}>
                 {loading ? (
@@ -569,51 +581,109 @@ function CalendarGrid({
                 ) : (
                   <>
                     {/* Untimed events at top */}
-                    {untimedItems.map((item) => (
-                      <div key={item.id} className="flex items-center gap-1.5 mb-1.5 min-w-0">
-                        {item.personColors.map((color, i) => (
-                          <span key={i} className="h-2.5 w-2.5 xl:h-3 xl:w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                    {untimedItems.length > 0 && (
+                      <div className={cn('space-y-1', timedItems.length > 0 && 'mb-2 pb-2 border-b border-dashed border-muted-foreground/20')}>
+                        {untimedItems.map((item) => (
+                          <div key={item.id} className="flex items-center gap-1.5 min-w-0">
+                            {item.personColors.map((color, i) => (
+                              <span key={i} className="h-2.5 w-2.5 xl:h-3 xl:w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                            ))}
+                            <p className="text-sm xl:text-base font-medium truncate">{item.title}</p>
+                          </div>
                         ))}
-                        <p className="text-sm xl:text-base font-medium truncate">{item.title}</p>
                       </div>
-                    ))}
-                    {/* Timeline for timed events */}
+                    )}
+                    {/* Timeline with duration blocks */}
                     {timedItems.length > 0 && (
-                      <div className="relative flex-1 min-h-[200px] xl:min-h-[240px]">
-                        {/* Hour markers */}
-                        {[8, 12, 18].map((h) => {
-                          const pct = ((h - TIMELINE_START) / TIMELINE_RANGE) * 100;
-                          return (
-                            <div key={h} className="absolute left-0 right-0 flex items-center pointer-events-none" style={{ top: `${pct}%` }}>
-                              <span className="text-[10px] text-muted-foreground/40 tabular-nums w-6 shrink-0">{h}h</span>
-                              <div className="flex-1 border-t border-dashed border-muted-foreground/15" />
-                            </div>
-                          );
-                        })}
-                        {timedItems.map((item) => {
-                          const hour = parseHour(item.timeText)!;
-                          const pct = Math.max(0, Math.min(95, ((hour - TIMELINE_START) / TIMELINE_RANGE) * 100));
-                          return (
-                            <div
-                              key={item.id}
-                              className="absolute left-7 right-0 flex items-center gap-1.5 min-w-0"
-                              style={{ top: `${pct}%` }}
-                            >
-                              {item.personColors.map((color, i) => (
-                                <span key={i} className="h-2.5 w-2.5 xl:h-3 xl:w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-                              ))}
-                              <p className="text-sm xl:text-base truncate">
-                                <span className="font-medium">{item.title}</span>
-                                <span className="text-muted-foreground text-xs xl:text-sm"> · {item.timeText}</span>
-                              </p>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <TimelineBlocks items={timedItems} />
                     )}
                   </>
                 )}
               </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TimelineBlocks({ items }: { items: CalendarItem[] }) {
+  // Compute lane assignments for overlapping events
+  const lanes: { endHour: number }[] = [];
+  const eventLaneMap = new Map<string, number>();
+
+  for (const item of items) {
+    const start = parseHour(item.timeText)!;
+    const end = parseHour(item.endTimeText) ?? start + 1;
+    let assigned = lanes.findIndex((l) => l.endHour <= start);
+    if (assigned === -1) {
+      assigned = lanes.length;
+      lanes.push({ endHour: 0 });
+    }
+    lanes[assigned].endHour = end;
+    eventLaneMap.set(item.id, assigned);
+  }
+
+  // For each event, count max concurrent events in its range
+  const eventLayout = items.map((item) => {
+    const start = parseHour(item.timeText)!;
+    const end = parseHour(item.endTimeText) ?? start + 1;
+    const concurrent = items.filter((other) => {
+      const os = parseHour(other.timeText)!;
+      const oe = parseHour(other.endTimeText) ?? os + 1;
+      return os < end && oe > start;
+    }).length;
+    const lane = eventLaneMap.get(item.id) ?? 0;
+    const startPct = Math.max(0, ((start - TIMELINE_START) / TIMELINE_RANGE) * 100);
+    const endPct = Math.min(100, ((end - TIMELINE_START) / TIMELINE_RANGE) * 100);
+    const heightPct = Math.max(endPct - startPct, 4);
+    return { item, lane, totalLanes: concurrent, startPct, heightPct };
+  });
+
+  const HOUR_LABEL_W = 28; // px reserved for hour labels
+
+  return (
+    <div className="relative flex-1 min-h-[200px] xl:min-h-[280px]">
+      {/* Hour markers */}
+      {[8, 12, 18].map((h) => {
+        const pct = ((h - TIMELINE_START) / TIMELINE_RANGE) * 100;
+        return (
+          <div key={h} className="absolute left-0 right-0 flex items-center pointer-events-none" style={{ top: `${pct}%` }}>
+            <span className="text-[10px] text-muted-foreground/40 tabular-nums w-7 shrink-0">{h}h</span>
+            <div className="flex-1 border-t border-dashed border-muted-foreground/10" />
+          </div>
+        );
+      })}
+      {/* Event blocks */}
+      {eventLayout.map(({ item, lane, totalLanes, startPct, heightPct }) => {
+        const isSmall = heightPct < 6;
+        return (
+          <div
+            key={item.id}
+            className="absolute rounded-r-md border-l-4 bg-muted/50 dark:bg-muted/30 px-2 py-0.5 overflow-hidden"
+            style={{
+              borderLeftColor: item.personColors[0] ?? '#888',
+              top: `${startPct}%`,
+              height: `${heightPct}%`,
+              left: `calc(${HOUR_LABEL_W}px + ${(lane / totalLanes)} * (100% - ${HOUR_LABEL_W}px))`,
+              width: `calc((100% - ${HOUR_LABEL_W}px) / ${totalLanes})`,
+            }}
+          >
+            <p className="text-xs xl:text-sm font-medium truncate leading-tight">{item.title}</p>
+            {!isSmall && (
+              <>
+                <p className="text-[10px] xl:text-xs text-muted-foreground truncate">
+                  {item.timeText}{item.endTimeText ? `–${item.endTimeText}` : ''}
+                </p>
+                {item.personColors.length > 1 && (
+                  <div className="flex gap-0.5 mt-0.5">
+                    {item.personColors.map((c, i) => (
+                      <span key={i} className="h-2 w-2 rounded-full" style={{ backgroundColor: c }} />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         );

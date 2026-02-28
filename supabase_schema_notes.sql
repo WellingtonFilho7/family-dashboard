@@ -130,7 +130,11 @@ update one_off_items
   set person_ids = array[person_id]
   where person_id is not null and (person_ids is null or person_ids = '{}');
 
--- 7) Auth: email+password (não OTP)
+-- 7) end_time_text: horário de término dos eventos
+alter table recurring_items add column if not exists end_time_text text;
+alter table one_off_items add column if not exists end_time_text text;
+
+-- 8) Auth: email+password (não OTP)
 -- O app usa signInWithPassword / signUp. Para permitir sign-up sem
 -- confirmação de e-mail (recomendado para uso doméstico):
 --   Supabase Dashboard → Authentication → Providers → Email

@@ -40,12 +40,14 @@ export function AgendaAdmin({
     title: '',
     dayOfWeek: 2,
     timeText: '',
+    endTimeText: '',
     personIds: [] as string[],
   });
   const [oneOffForm, setOneOffForm] = useState({
     title: '',
     date: '',
     timeText: '',
+    endTimeText: '',
     personIds: [] as string[],
   });
 
@@ -70,13 +72,14 @@ export function AgendaAdmin({
         title: recForm.title,
         day_of_week: recForm.dayOfWeek,
         time_text: recForm.timeText || null,
+        end_time_text: recForm.endTimeText || null,
         person_id: recForm.personIds[0] ?? null,
         person_ids: recForm.personIds,
         is_private: false,
       });
       if (error) return toast.error(error.message);
       toast.success('Evento recorrente criado');
-      setRecForm((prev) => ({ ...prev, title: '', timeText: '', personIds: [] }));
+      setRecForm((prev) => ({ ...prev, title: '', timeText: '', endTimeText: '', personIds: [] }));
       setShowRecForm(false);
       refresh();
     } catch {
@@ -94,13 +97,14 @@ export function AgendaAdmin({
         title: oneOffForm.title,
         date: oneOffForm.date,
         time_text: oneOffForm.timeText || null,
+        end_time_text: oneOffForm.endTimeText || null,
         person_id: oneOffForm.personIds[0] ?? null,
         person_ids: oneOffForm.personIds,
         is_private: false,
       });
       if (error) return toast.error(error.message);
       toast.success('Evento pontual criado');
-      setOneOffForm((prev) => ({ ...prev, title: '', timeText: '', personIds: [] }));
+      setOneOffForm((prev) => ({ ...prev, title: '', timeText: '', endTimeText: '', personIds: [] }));
       setShowOneOffForm(false);
       refresh();
     } catch {
@@ -134,13 +138,19 @@ export function AgendaAdmin({
     return ids.map((id) => people.find((p) => p.id === id)?.name ?? '?').join(', ');
   };
 
+  const timeRange = (item: { timeText?: string; endTimeText?: string }) => {
+    if (!item.timeText) return '';
+    if (item.endTimeText) return ` • ${item.timeText}-${item.endTimeText}`;
+    return ` • ${item.timeText}`;
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Agenda</CardTitle>
         <CardDescription>Eventos recorrentes e pontuais da família.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-5 overflow-hidden">
         {/* Recorrentes */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -154,11 +164,12 @@ export function AgendaAdmin({
           {showRecForm && (
             <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
               <Input placeholder="Título" value={recForm.title} onChange={(e) => setRecForm({ ...recForm, title: e.target.value })} disabled={disabled} />
+              <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base" value={recForm.dayOfWeek} onChange={(e) => setRecForm({ ...recForm, dayOfWeek: Number(e.target.value) })} disabled={disabled}>
+                {dayOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
               <div className="grid grid-cols-2 gap-3">
-                <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base" value={recForm.dayOfWeek} onChange={(e) => setRecForm({ ...recForm, dayOfWeek: Number(e.target.value) })} disabled={disabled}>
-                  {dayOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                </select>
-                <Input placeholder="Hora (ex: 08:30)" value={recForm.timeText} onChange={(e) => setRecForm({ ...recForm, timeText: e.target.value })} disabled={disabled} />
+                <Input placeholder="Início (ex: 08:30)" value={recForm.timeText} onChange={(e) => setRecForm({ ...recForm, timeText: e.target.value })} disabled={disabled} />
+                <Input placeholder="Fim (ex: 10:00)" value={recForm.endTimeText} onChange={(e) => setRecForm({ ...recForm, endTimeText: e.target.value })} disabled={disabled} />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium">Pessoas</p>
@@ -191,7 +202,7 @@ export function AgendaAdmin({
                     <EditableText value={item.title} onSave={(t) => updateTitle('recurring_items', item.id, t)} disabled={disabled} />
                     <p className="text-xs text-muted-foreground">
                       {dayNames[item.dayOfWeek] ?? `Dia ${item.dayOfWeek}`}
-                      {item.timeText ? ` • ${item.timeText}` : ''} • {personNames(item)}
+                      {timeRange(item)} • {personNames(item)}
                       {item.isPrivate ? ' • privado' : ''}
                     </p>
                   </div>
@@ -229,9 +240,10 @@ export function AgendaAdmin({
           {showOneOffForm && (
             <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
               <Input placeholder="Título" value={oneOffForm.title} onChange={(e) => setOneOffForm({ ...oneOffForm, title: e.target.value })} disabled={disabled} />
+              <Input type="date" value={oneOffForm.date} onChange={(e) => setOneOffForm({ ...oneOffForm, date: e.target.value })} disabled={disabled} />
               <div className="grid grid-cols-2 gap-3">
-                <Input type="date" value={oneOffForm.date} onChange={(e) => setOneOffForm({ ...oneOffForm, date: e.target.value })} disabled={disabled} />
-                <Input placeholder="Hora (ex: 14:00)" value={oneOffForm.timeText} onChange={(e) => setOneOffForm({ ...oneOffForm, timeText: e.target.value })} disabled={disabled} />
+                <Input placeholder="Início (ex: 14:00)" value={oneOffForm.timeText} onChange={(e) => setOneOffForm({ ...oneOffForm, timeText: e.target.value })} disabled={disabled} />
+                <Input placeholder="Fim (ex: 17:00)" value={oneOffForm.endTimeText} onChange={(e) => setOneOffForm({ ...oneOffForm, endTimeText: e.target.value })} disabled={disabled} />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium">Pessoas</p>
@@ -263,7 +275,7 @@ export function AgendaAdmin({
                   <div className="min-w-0">
                     <EditableText value={item.title} onSave={(t) => updateTitle('one_off_items', item.id, t)} disabled={disabled} />
                     <p className="text-xs text-muted-foreground">
-                      {item.date}{item.timeText ? ` • ${item.timeText}` : ''} • {personNames(item)}
+                      {item.date}{timeRange(item)} • {personNames(item)}
                       {item.isPrivate ? ' • privado' : ''}
                     </p>
                   </div>
