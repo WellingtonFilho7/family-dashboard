@@ -313,43 +313,37 @@ export function AgendaAdmin({
           </div>
 
           {showRecForm && (
-            <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+            <div className="space-y-3 overflow-hidden rounded-lg border bg-muted/30 p-3 sm:p-4">
               <Input placeholder="Título" value={recForm.title} onChange={(e) => setRecForm({ ...recForm, title: e.target.value })} disabled={disabled} />
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-                <div className="min-w-0">
-                  <select
-                    className="h-11 w-full min-w-0 rounded-lg border bg-background px-3 text-base text-foreground"
-                    value={recForm.dayOfWeek}
-                    onChange={(e) => setRecForm({ ...recForm, dayOfWeek: Number(e.target.value) })}
-                    disabled={disabled}
-                  >
-                    {dayOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                  </select>
-                </div>
-                <div className="min-w-0">
-                  <Input
-                    type="time"
-                    step={60}
-                    min="00:00"
-                    max="23:59"
-                    className="min-w-0"
-                    value={recForm.startTime}
-                    onChange={(e) => setRecForm({ ...recForm, startTime: e.target.value })}
-                    disabled={disabled}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <Input
-                    type="time"
-                    step={60}
-                    min="00:00"
-                    max="23:59"
-                    className="min-w-0"
-                    value={recForm.endTime}
-                    onChange={(e) => setRecForm({ ...recForm, endTime: e.target.value })}
-                    disabled={disabled}
-                  />
-                </div>
+              <select
+                className="h-11 w-full min-w-0 rounded-lg border bg-background px-3 text-base text-foreground"
+                value={recForm.dayOfWeek}
+                onChange={(e) => setRecForm({ ...recForm, dayOfWeek: Number(e.target.value) })}
+                disabled={disabled}
+              >
+                {dayOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+              <div className="grid grid-cols-2 gap-2 min-w-0 overflow-hidden">
+                <Input
+                  type="time"
+                  step={60}
+                  min="00:00"
+                  max="23:59"
+                  placeholder="Início"
+                  value={recForm.startTime}
+                  onChange={(e) => setRecForm({ ...recForm, startTime: e.target.value })}
+                  disabled={disabled}
+                />
+                <Input
+                  type="time"
+                  step={60}
+                  min="00:00"
+                  max="23:59"
+                  placeholder="Fim"
+                  value={recForm.endTime}
+                  onChange={(e) => setRecForm({ ...recForm, endTime: e.target.value })}
+                  disabled={disabled}
+                />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium">Pessoas</p>
@@ -435,42 +429,35 @@ export function AgendaAdmin({
           </div>
 
           {showOneOffForm && (
-            <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+            <div className="space-y-3 overflow-hidden rounded-lg border bg-muted/30 p-3 sm:p-4">
               <Input placeholder="Título" value={oneOffForm.title} onChange={(e) => setOneOffForm({ ...oneOffForm, title: e.target.value })} disabled={disabled} />
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-                <div className="min-w-0">
-                  <Input
-                    type="date"
-                    className="min-w-0"
-                    value={oneOffForm.date}
-                    onChange={(e) => setOneOffForm({ ...oneOffForm, date: e.target.value })}
-                    disabled={disabled}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <Input
-                    type="time"
-                    step={60}
-                    min="00:00"
-                    max="23:59"
-                    className="min-w-0"
-                    value={oneOffForm.startTime}
-                    onChange={(e) => setOneOffForm({ ...oneOffForm, startTime: e.target.value })}
-                    disabled={disabled}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <Input
-                    type="time"
-                    step={60}
-                    min="00:00"
-                    max="23:59"
-                    className="min-w-0"
-                    value={oneOffForm.endTime}
-                    onChange={(e) => setOneOffForm({ ...oneOffForm, endTime: e.target.value })}
-                    disabled={disabled}
-                  />
-                </div>
+              <Input
+                type="date"
+                value={oneOffForm.date}
+                onChange={(e) => setOneOffForm({ ...oneOffForm, date: e.target.value })}
+                disabled={disabled}
+              />
+              <div className="grid grid-cols-2 gap-2 min-w-0 overflow-hidden">
+                <Input
+                  type="time"
+                  step={60}
+                  min="00:00"
+                  max="23:59"
+                  placeholder="Início"
+                  value={oneOffForm.startTime}
+                  onChange={(e) => setOneOffForm({ ...oneOffForm, startTime: e.target.value })}
+                  disabled={disabled}
+                />
+                <Input
+                  type="time"
+                  step={60}
+                  min="00:00"
+                  max="23:59"
+                  placeholder="Fim"
+                  value={oneOffForm.endTime}
+                  onChange={(e) => setOneOffForm({ ...oneOffForm, endTime: e.target.value })}
+                  disabled={disabled}
+                />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium">Pessoas</p>
@@ -552,7 +539,7 @@ export function AgendaAdmin({
             </DialogHeader>
 
             {editForm ? (
-              <div className="space-y-3">
+              <div className="min-w-0 space-y-3">
                 <Input
                   placeholder="Título"
                   value={editForm.title}
@@ -586,35 +573,29 @@ export function AgendaAdmin({
                   />
                 )}
 
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  <div className="min-w-0">
-                    <Input
-                      type="time"
-                      step={60}
-                      min="00:00"
-                      max="23:59"
-                      className="min-w-0"
-                      value={editForm.startTime}
-                      onChange={(e) =>
-                        setEditForm((prev) => (prev ? { ...prev, startTime: e.target.value } : prev))
-                      }
-                      disabled={disabled}
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <Input
-                      type="time"
-                      step={60}
-                      min="00:00"
-                      max="23:59"
-                      className="min-w-0"
-                      value={editForm.endTime}
-                      onChange={(e) =>
-                        setEditForm((prev) => (prev ? { ...prev, endTime: e.target.value } : prev))
-                      }
-                      disabled={disabled}
-                    />
-                  </div>
+                <div className="grid grid-cols-2 gap-2 min-w-0 overflow-hidden">
+                  <Input
+                    type="time"
+                    step={60}
+                    min="00:00"
+                    max="23:59"
+                    value={editForm.startTime}
+                    onChange={(e) =>
+                      setEditForm((prev) => (prev ? { ...prev, startTime: e.target.value } : prev))
+                    }
+                    disabled={disabled}
+                  />
+                  <Input
+                    type="time"
+                    step={60}
+                    min="00:00"
+                    max="23:59"
+                    value={editForm.endTime}
+                    onChange={(e) =>
+                      setEditForm((prev) => (prev ? { ...prev, endTime: e.target.value } : prev))
+                    }
+                    disabled={disabled}
+                  />
                 </div>
 
                 <div className="space-y-1">

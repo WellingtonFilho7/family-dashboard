@@ -585,14 +585,30 @@ function CalendarGrid({
         const timedIds = new Set(timedEntries.map((entry) => entry.item.id));
         const untimedItems = items.filter((item) => !timedIds.has(item.id));
 
-        const stackedTimedEntries = (() => {
+        const lanedTimedEntries = (() => {
           if (timedEntries.length === 0) return [];
-          const collisionsByWindow = new Map<string, number>();
-          return timedEntries.map((entry) => {
-            const key = `${entry.startHour.toFixed(4)}-${entry.endHour.toFixed(4)}`;
-            const stackIndex = collisionsByWindow.get(key) ?? 0;
-            collisionsByWindow.set(key, stackIndex + 1);
-            return { ...entry, stackIndex };
+
+          // Greedy lane assignment: each lane tracks its latest endHour.
+          // An event fits in a lane if its startHour >= that lane's endHour.
+          const laneEnds: number[] = [];
+          const assigned = timedEntries.map((entry) => {
+            let lane = laneEnds.findIndex((end) => entry.startHour >= end);
+            if (lane === -1) {
+              lane = laneEnds.length;
+              laneEnds.push(0);
+            }
+            laneEnds[lane] = entry.endHour;
+            return { ...entry, lane };
+          });
+
+          // For each event, find how many lanes overlap at its time range
+          // so side-by-side width is based on local concurrency, not global max.
+          return assigned.map((entry) => {
+            const concurrent = assigned.filter(
+              (other) => other.startHour < entry.endHour && other.endHour > entry.startHour
+            );
+            const maxLane = Math.max(...concurrent.map((c) => c.lane)) + 1;
+            return { ...entry, totalLanes: maxLane };
           });
         })();
 
@@ -699,76 +715,106 @@ function CalendarGrid({
                     ) : null}
 
                     {(() => {
-                      const timedLayouts = stackedTimedEntries.map((entry, idx) => {
+                      const timedLayouts = lanedTimedEntries.map((entry, idx) => {
                         const durationPercent = ((entry.endHour - entry.startHour) / TIMELINE_VISIBLE_HOURS) * 100;
                         const heightPercent = Math.max(MIN_EVENT_HEIGHT_PERCENT, durationPercent);
-                        const rawTopPercent =
-                          ((entry.startHour - TIMELINE_START_HOUR) / TIMELINE_VISIBLE_HOURS) * 100;
-                        const stackOffsetPx = entry.stackIndex * 46;
                         const topPercent = Math.max(
                           0,
-                          Math.min(rawTopPercent, 100 - heightPercent)
+                          Math.min(
+                            ((entry.startHour - TIMELINE_START_HOUR) / TIMELINE_VISIBLE_HOURS) * 100,
+                            100 - heightPercent
+                          )
                         );
+                        const widthPercent = 100 / entry.totalLanes;
+                        const leftPercent = entry.lane * widthPercent;
 
                         return {
                           id: `${entry.item.id}-${idx}`,
                           item: entry.item,
                           topPercent,
                           heightPercent,
-                          stackOffsetPx,
+                          widthPercent,
+                          leftPercent,
                         };
                       });
 
+                      // Hour markers every 3h within the visible range
+                      const hourMarkers: number[] = [];
+                      for (let h = TIMELINE_START_HOUR; h <= TIMELINE_END_HOUR; h += 3) {
+                        if (h > TIMELINE_START_HOUR && h < TIMELINE_END_HOUR) hourMarkers.push(h);
+                      }
+
                       return (
                         <div className="relative min-h-[300px] flex-1 overflow-hidden">
+                          {/* Top / bottom guides */}
                           <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-border/50" />
                           <div className="pointer-events-none absolute inset-x-0 bottom-0 border-t border-dashed border-border/50" />
-                          <p className="pointer-events-none absolute left-2 top-2 text-[10px] uppercase text-muted-foreground">
-                            07:00
+                          <p className="pointer-events-none absolute right-1.5 top-0.5 text-[10px] tabular-nums text-muted-foreground/60">
+                            07h
                           </p>
-                          <p className="pointer-events-none absolute left-2 bottom-2 text-[10px] uppercase text-muted-foreground">
-                            22:00
+                          <p className="pointer-events-none absolute right-1.5 bottom-0.5 text-[10px] tabular-nums text-muted-foreground/60">
+                            22h
                           </p>
+
+                          {/* Intermediate hour markers */}
+                          {hourMarkers.map((h) => {
+                            const pct = ((h - TIMELINE_START_HOUR) / TIMELINE_VISIBLE_HOURS) * 100;
+                            return (
+                              <div key={`hour-${h}`} className="pointer-events-none absolute inset-x-0" style={{ top: `${pct}%` }}>
+                                <div className="border-t border-dashed border-border/30" />
+                                <p className="absolute right-1.5 -top-2.5 text-[10px] tabular-nums text-muted-foreground/50">
+                                  {h}h
+                                </p>
+                              </div>
+                            );
+                          })}
 
                           {timedLayouts.length === 0 ? (
                             <p className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                               Sem eventos com horário
                             </p>
                           ) : (
-                            timedLayouts.map((layout) => (
-                              <div
-                                key={layout.id}
-                                className="absolute overflow-hidden rounded-md border bg-card/95 px-2.5 py-1.5 shadow-sm"
-                                style={{
-                                  top: `calc(${layout.topPercent}% + ${layout.stackOffsetPx}px)`,
-                                  left: '0%',
-                                  width: '100%',
-                                  height: `max(${layout.heightPercent}%, 42px)`,
-                                }}
-                              >
-                                <div className="flex items-start gap-1.5 min-w-0">
-                                  <div className="flex shrink-0 items-center gap-1">
-                                    {resolveItemColors(layout.item).map((color, index) => (
-                                      <span
-                                        key={`${layout.item.id}-timed-${index}`}
-                                        className="h-2.5 w-2.5 rounded-full"
-                                        style={{ backgroundColor: color }}
-                                      />
-                                    ))}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="truncate text-xs font-medium leading-tight xl:text-sm">
-                                      {layout.item.title}
-                                    </p>
-                                    {getItemTimeLabel(layout.item) ? (
-                                      <p className="mt-0.5 truncate text-[11px] leading-tight text-muted-foreground tabular-nums">
-                                        {getItemTimeLabel(layout.item)}
+                            timedLayouts.map((layout) => {
+                              const colors = resolveItemColors(layout.item);
+                              const borderColor = colors[0] ?? fallbackColor;
+                              return (
+                                <div
+                                  key={layout.id}
+                                  className="absolute overflow-hidden rounded-md border-l-[3px] bg-card/95 px-2 py-1 shadow-sm active:scale-[0.98] transition-transform"
+                                  style={{
+                                    top: `${layout.topPercent}%`,
+                                    left: `${layout.leftPercent}%`,
+                                    width: `${layout.widthPercent}%`,
+                                    height: `max(${layout.heightPercent}%, 36px)`,
+                                    borderLeftColor: borderColor,
+                                  }}
+                                >
+                                  <div className="flex items-start gap-1.5 min-w-0">
+                                    {colors.length > 1 && (
+                                      <div className="flex shrink-0 flex-col items-center gap-0.5 pt-0.5">
+                                        {colors.slice(1).map((color, index) => (
+                                          <span
+                                            key={`${layout.item.id}-dot-${index}`}
+                                            className="h-2 w-2 rounded-full"
+                                            style={{ backgroundColor: color }}
+                                          />
+                                        ))}
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <p className="truncate text-xs font-medium leading-tight xl:text-sm">
+                                        {layout.item.title}
                                       </p>
-                                    ) : null}
+                                      {getItemTimeLabel(layout.item) ? (
+                                        <p className="mt-0.5 truncate text-[10px] leading-tight text-muted-foreground tabular-nums xl:text-[11px]">
+                                          {getItemTimeLabel(layout.item)}
+                                        </p>
+                                      ) : null}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))
+                              );
+                            })
                           )}
                         </div>
                       );
