@@ -298,10 +298,7 @@ export function AgendaAdmin({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          Agenda
-          <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-bold text-white">v2</span>
-        </CardTitle>
+        <CardTitle>Agenda</CardTitle>
         <CardDescription>Eventos recorrentes e pontuais da família.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5 overflow-hidden">
@@ -326,7 +323,7 @@ export function AgendaAdmin({
               >
                 {dayOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 min-w-0 overflow-hidden">
                 <Input
                   type="time"
                   step={60}
@@ -440,7 +437,7 @@ export function AgendaAdmin({
                 onChange={(e) => setOneOffForm({ ...oneOffForm, date: e.target.value })}
                 disabled={disabled}
               />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 min-w-0 overflow-hidden">
                 <Input
                   type="time"
                   step={60}
@@ -542,7 +539,7 @@ export function AgendaAdmin({
             </DialogHeader>
 
             {editForm ? (
-              <div className="space-y-3">
+              <div className="min-w-0 space-y-3">
                 <Input
                   placeholder="Título"
                   value={editForm.title}
@@ -576,7 +573,7 @@ export function AgendaAdmin({
                   />
                 )}
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2 min-w-0 overflow-hidden">
                   <Input
                     type="time"
                     step={60}

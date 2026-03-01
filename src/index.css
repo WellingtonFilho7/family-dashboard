@@ -73,6 +73,15 @@
     @apply border-border;
   }
 
+  input[type="time"],
+  input[type="date"],
+  input[type="datetime-local"],
+  select {
+    max-width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Space Grotesk', 'Satoshi Variable', system-ui, -apple-system,
