@@ -1,7 +1,13 @@
 -- Ajustes solicitados (rodar via Supabase SQL editor ou migration)
+-- Estado-alvo do app em 2026-03-25:
+-- - auth por email+senha
+-- - admin criado manualmente (não via signUp público)
+-- - person_ids é o modelo canônico
+-- - time_text é legado e deve sair do banco quando a migração terminar
 
 -- 0) Agenda multi-pessoa (backward-compatible)
--- Novos inserts devem gravar person_ids (uuid[]), mantendo person_id legado como fallback.
+-- Novos inserts devem gravar person_ids (uuid[]). person_id legado existe apenas
+-- para compatibilidade temporária e deve ser removido depois da migração completa.
 alter table recurring_items add column if not exists person_ids uuid[] default '{}';
 alter table one_off_items add column if not exists person_ids uuid[] default '{}';
 
@@ -40,6 +46,14 @@ alter table people
 alter table recurring_items
   add constraint recurring_items_day_of_week_check check (day_of_week between 1 and 7);
 
+-- 4b) Abastecimento estruturado (catálogo em código + estado no banco)
+create table if not exists supply_item_state (
+  item_id text primary key,
+  current_stock numeric not null default 0,
+  estimated_unit_price numeric default null,
+  updated_at timestamptz not null default now()
+);
+
 -- 5) RLS + policies (painel publico vs admin)
 alter table people enable row level security;
 alter table recurring_items enable row level security;
@@ -47,6 +61,7 @@ alter table one_off_items enable row level security;
 alter table kid_routine_templates enable row level security;
 alter table kid_routine_checks enable row level security;
 alter table replenish_items enable row level security;
+alter table supply_item_state enable row level security;
 alter table weekly_focus enable row level security;
 alter table homeschool_notes enable row level security;
 alter table settings enable row level security;
@@ -76,6 +91,10 @@ create policy "anon_read_kid_routine_checks" on kid_routine_checks for select
 drop policy if exists "anon_read_replenish_items" on replenish_items;
 create policy "anon_read_replenish_items" on replenish_items for select
   using (coalesce(is_private, false) = false);
+
+drop policy if exists "anon_read_supply_item_state" on supply_item_state;
+create policy "anon_read_supply_item_state" on supply_item_state for select
+  using (true);
 
 drop policy if exists "anon_read_weekly_focus" on weekly_focus;
 create policy "anon_read_weekly_focus" on weekly_focus for select
@@ -120,6 +139,11 @@ create policy "auth_all_replenish_items" on replenish_items
   for all using (auth.role() = 'authenticated')
   with check (auth.role() = 'authenticated');
 
+drop policy if exists "auth_all_supply_item_state" on supply_item_state;
+create policy "auth_all_supply_item_state" on supply_item_state
+  for all using (auth.role() = 'authenticated')
+  with check (auth.role() = 'authenticated');
+
 drop policy if exists "auth_all_weekly_focus" on weekly_focus;
 create policy "auth_all_weekly_focus" on weekly_focus
   for all using (auth.role() = 'authenticated')
@@ -145,10 +169,19 @@ update one_off_items
   where person_id is not null and (person_ids is null or person_ids = '{}');
 
 -- 7) Auth: email+password (não OTP)
--- O app usa signInWithPassword / signUp. Para permitir sign-up sem
--- confirmação de e-mail (recomendado para uso doméstico):
---   Supabase Dashboard → Authentication → Providers → Email
---   Desmarcar "Confirm email"
+-- O app usa signInWithPassword e reset por e-mail.
+-- Regra de produto atual:
+--   - não expor signUp público para admin
+--   - criar admins manualmente no Supabase Auth até existir allowlist/perfil
+--   - auditar Redirect URLs e políticas reais no dashboard
 
--- NOTA: a coluna end_time_text (text) foi descartada.
--- O app usa start_time / end_time (type time) — veja seção 0b.
+-- 8) kid_routine_checks no kiosk público
+-- O /painel permite que crianças marquem rotinas.
+-- Isso exige que o ambiente REAL tenha uma estratégia explícita para escrita anônima
+-- em kid_routine_checks (policy/RPC equivalente). Confirmar no projeto Supabase.
+
+-- 9) time_text legado
+-- O app já deriva timeText em runtime a partir de start_time / end_time.
+-- Quando o ambiente estiver auditado, migrar/remover time_text:
+--   alter table recurring_items drop column if exists time_text;
+--   alter table one_off_items drop column if exists time_text;

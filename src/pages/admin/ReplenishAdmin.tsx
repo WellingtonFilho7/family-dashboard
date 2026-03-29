@@ -17,10 +17,16 @@ import {
   Input,
   Separator,
 } from '@/components';
-import { supabase } from '@/lib/supabase';
+import {
+  createReplenishItem,
+  deleteReplenishItem,
+  type ReplenishPatch,
+  updateReplenishItem,
+} from '@/lib/api/replenish';
 import type { ReplenishItem } from '@/lib/types';
 import type { AdminSectionProps } from './shared';
-import { requireAuth, EmptyState, EditableText, DeleteConfirmButton } from './shared';
+import { requireAuth } from './auth';
+import { EmptyState, EditableText, DeleteConfirmButton } from './shared';
 
 const urgencyLabels: Record<string, string> = { now: 'Agora', soon: 'Em breve' };
 
@@ -37,12 +43,7 @@ export function ReplenishAdmin({
   const createItem = async () => {
     if (!requireAuth(hasSession)) return;
     if (!form.title) return toast.error('Título é obrigatório');
-    const { error } = await supabase!.from('replenish_items').insert({
-      title: form.title,
-      urgency: form.urgency,
-      is_active: true,
-      is_private: false,
-    });
+    const { error } = await createReplenishItem(form.title, form.urgency as 'now' | 'soon');
     if (error) return toast.error(error.message);
     toast.success('Item criado');
     setForm({ title: '', urgency: 'now' });
@@ -50,16 +51,16 @@ export function ReplenishAdmin({
     refresh();
   };
 
-  const updateItem = async (id: string, patch: Record<string, unknown>) => {
+  const updateItem = async (id: string, patch: ReplenishPatch) => {
     if (!requireAuth(hasSession)) return;
-    const { error } = await supabase!.from('replenish_items').update(patch).eq('id', id);
+    const { error } = await updateReplenishItem(id, patch);
     if (error) toast.error(error.message);
     else { toast.success('Atualizado'); refresh(); }
   };
 
   const deleteItem = async (id: string) => {
     if (!requireAuth(hasSession)) return;
-    const { error } = await supabase!.from('replenish_items').delete().eq('id', id);
+    const { error } = await deleteReplenishItem(id);
     if (error) toast.error(error.message);
     else { toast.success('Removido'); refresh(); }
   };
@@ -69,8 +70,10 @@ export function ReplenishAdmin({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Reposição</CardTitle>
-            <CardDescription>Itens para comprar ou repor.</CardDescription>
+            <CardTitle>Lembretes rápidos</CardTitle>
+            <CardDescription>
+              Coisas avulsas que não entram no calendário, nas rotinas ou no catálogo estruturado de abastecimento.
+            </CardDescription>
           </div>
           <Button size="sm" variant={showForm ? 'outline' : 'default'} onClick={() => setShowForm(!showForm)}>
             {showForm ? <X className="mr-1.5 h-4 w-4" /> : <Plus className="mr-1.5 h-4 w-4" />}
@@ -82,7 +85,7 @@ export function ReplenishAdmin({
         {showForm && (
           <>
             <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
-              <Input placeholder="Ex: Leite integral" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} disabled={disabled} />
+              <Input placeholder="Ex: pilhas, conserto do filtro, papel para impressora" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} disabled={disabled} />
               <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base" value={form.urgency} onChange={(e) => setForm({ ...form, urgency: e.target.value })} disabled={disabled}>
                 <option value="now">Agora</option>
                 <option value="soon">Em breve</option>
@@ -94,7 +97,7 @@ export function ReplenishAdmin({
         )}
 
         {items.length === 0 ? (
-          <EmptyState message="Lista de reposição vazia." />
+          <EmptyState message="Nenhum lembrete rápido cadastrado." />
         ) : (
           <div className="space-y-2">
             {items.map((item) => (

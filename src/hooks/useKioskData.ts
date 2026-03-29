@@ -2,20 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { addDays, isSameDay, startOfWeek } from 'date-fns';
 import { toast } from 'sonner';
 
-import { getFamilyDate, getFamilyDateKey, parseDateOnly } from '@/lib/date-utils';
-import { supabase } from '@/lib/supabase';
+import { getFamilyDateKey, parseDateOnly } from '@/lib/date-utils';
+import { fetchFamilyData, getRelativeDateKey } from '@/lib/api/family-data';
+import { adminSupabase, hasSupabaseConfig, publicSupabase } from '@/lib/supabase';
 import { mockData } from '@/lib/mockData';
 import { computeRoutineToggle } from '@/lib/routine-utils';
+import { buildSupplyModuleData } from '@/lib/supply-module';
 import type {
   CalendarItem,
   FamilyData,
-  HomeschoolNote,
   KidRoutineCheck,
-  KidRoutineTemplate,
-  OneOffItem,
   Person,
-  RecurringItem,
-  ReplenishItem,
 } from '@/lib/types';
 
 const filterPrivate = <T extends { isPrivate?: boolean }>(
@@ -40,13 +37,12 @@ type UseKioskOptions = {
 };
 
 const supabaseUrlEnv = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonEnv = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const hasSupabaseUrl = Boolean(supabaseUrlEnv);
-const hasSupabaseAnon = Boolean(supabaseAnonEnv);
-const hasSupabaseEnv = hasSupabaseUrl && hasSupabaseAnon;
+const hasSupabaseEnv = hasSupabaseConfig;
 const debugSupabase =
   import.meta.env.DEV || import.meta.env.VITE_DEBUG_SUPABASE === 'true';
-const OFFLINE_CACHE_KEY = 'family-dashboard:offline-cache';
+const PUBLIC_OFFLINE_CACHE_KEY = 'family-dashboard:offline-cache:public';
+const ADMIN_OFFLINE_CACHE_KEY = 'family-dashboard:offline-cache:admin';
 
 export function useKioskData(
   visitMode: boolean,
@@ -62,8 +58,10 @@ export function useKioskData(
   const [dateKey, setDateKey] = useState(() => getFamilyDateKey());
   const lastFetchRef = useRef(Date.now());
   const isProd = import.meta.env.PROD;
-  const isMock = !isProd && (!supabase || !hasSupabaseEnv);
-  const hasConfig = Boolean(supabase) && hasSupabaseEnv;
+  const client = requireAuth ? adminSupabase : publicSupabase;
+  const offlineCacheKey = requireAuth ? ADMIN_OFFLINE_CACHE_KEY : PUBLIC_OFFLINE_CACHE_KEY;
+  const isMock = !isProd && (!client || !hasSupabaseEnv);
+  const hasConfig = Boolean(client) && hasSupabaseEnv;
 
   useEffect(() => {
     let active = true;
@@ -83,16 +81,15 @@ export function useKioskData(
         isProd,
         hasSupabaseEnv,
         hasSupabaseUrl,
-        hasSupabaseAnon,
         hasConfig,
-        supabaseReady: Boolean(supabase),
+        supabaseReady: Boolean(client),
         supabaseUrlHost: host,
       });
     }
 
     const missingEnv = [
       !hasSupabaseUrl ? 'VITE_SUPABASE_URL' : null,
-      !hasSupabaseAnon ? 'VITE_SUPABASE_ANON_KEY' : null,
+      !hasSupabaseEnv ? 'VITE_SUPABASE_ANON_KEY' : null,
     ]
       .filter(Boolean)
       .join(', ');
@@ -109,14 +106,14 @@ export function useKioskData(
           return;
         }
 
-        if (supabase && hasConfig) {
-          const data = await fetchAll();
+        if (client && hasConfig) {
+          const data = await fetchFamilyData(client, getRelativeDateKey(dateKey, -30), getRelativeDateKey(dateKey, 30));
           if (!active) return;
           setRawData(data);
           setRoutineChecks(data.kidRoutineChecks);
           setIsStale(false);
           lastFetchRef.current = Date.now();
-          try { localStorage.setItem(OFFLINE_CACHE_KEY, JSON.stringify(data)); } catch { /* quota */ }
+          try { localStorage.setItem(offlineCacheKey, JSON.stringify(data)); } catch { /* quota */ }
         } else if (isMock) {
           await new Promise((resolve) => setTimeout(resolve, 80));
           if (!active) return;
@@ -136,7 +133,7 @@ export function useKioskData(
         console.error(err);
         // Offline fallback: try to load from cache
         try {
-          const cached = localStorage.getItem(OFFLINE_CACHE_KEY);
+          const cached = localStorage.getItem(offlineCacheKey);
           if (cached) {
             const data = JSON.parse(cached) as FamilyData;
             setRawData(data);
@@ -170,7 +167,7 @@ export function useKioskData(
       active = false;
       controller.abort();
     };
-  }, [hasConfig, isMock, isProd, requireAuth, sessionToken, dateKey]);
+  }, [client, dateKey, hasConfig, isMock, isProd, offlineCacheKey, requireAuth, sessionToken]);
 
   useEffect(() => {
     routineChecksRef.current = routineChecks;
@@ -178,15 +175,15 @@ export function useKioskData(
 
   // Midnight rollover — recalculates week and triggers refetch via dateKey dep
   useEffect(() => {
-    const now = new Date();
-    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    const msUntilMidnight = tomorrow.getTime() - now.getTime() + 1_000;
-    const id = setTimeout(() => setDateKey(getFamilyDateKey()), msUntilMidnight);
-    return () => clearTimeout(id);
-  }, [dateKey]);
+    const id = window.setInterval(() => {
+      const nextDateKey = getFamilyDateKey();
+      setDateKey((current) => (current === nextDateKey ? current : nextDateKey));
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const weekStart = useMemo(
-    () => startOfWeek(getFamilyDate(), { weekStartsOn: 0 }),
+    () => startOfWeek(parseDateOnly(dateKey), { weekStartsOn: 0 }),
     [dateKey]
   );
   const weekDays = useMemo(
@@ -194,7 +191,7 @@ export function useKioskData(
     [weekStart]
   );
 
-    const data = useMemo(() => {
+  const data = useMemo(() => {
     if (!rawData) return null;
     const hidePrivate = !bypassVisitMode && (visitMode || rawData.settings.visitMode);
     const people = maskNames(rawData.people, hidePrivate);
@@ -209,7 +206,7 @@ export function useKioskData(
       kidRoutineTemplates: filterPrivate(rawData.kidRoutineTemplates, hidePrivate),
       homeschoolNotes: filterPrivate(rawData.homeschoolNotes, hidePrivate),
     };
-  }, [rawData, visitMode]);
+  }, [bypassVisitMode, rawData, visitMode]);
 
   const calendarByDay = useMemo(() => {
     if (!data) return [];
@@ -267,6 +264,11 @@ export function useKioskData(
     }));
   }, [data, weekDays, weekStart]);
 
+  const supplyModule = useMemo(
+    () => buildSupplyModuleData(data?.supplyStates ?? []),
+    [data?.supplyStates],
+  );
+
   const toggleRoutine = async (templateId: string) => {
     const todayKey = getFamilyDateKey();
     const toggleKey = `${templateId}-${todayKey}`;
@@ -288,8 +290,8 @@ export function useKioskData(
         () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`)
       );
 
-      if (supabase) {
-        const { error: upsertError } = await supabase.from('kid_routine_checks').upsert(
+      if (client) {
+        const { error: upsertError } = await client.from('kid_routine_checks').upsert(
           {
             template_id: templateId,
             date: todayKey,
@@ -313,18 +315,18 @@ export function useKioskData(
 
   // Silent background refresh (no loading spinner, no error toasts)
   const silentRefresh = useCallback(async () => {
-    if (!supabase || !hasConfig) return;
+    if (!client || !hasConfig) return;
     try {
-      const freshData = await fetchAll();
+      const freshData = await fetchFamilyData(client, getRelativeDateKey(dateKey, -30), getRelativeDateKey(dateKey, 30));
       setRawData(freshData);
       setRoutineChecks(freshData.kidRoutineChecks);
       setIsStale(false);
       lastFetchRef.current = Date.now();
-      try { localStorage.setItem(OFFLINE_CACHE_KEY, JSON.stringify(freshData)); } catch { /* quota */ }
+      try { localStorage.setItem(offlineCacheKey, JSON.stringify(freshData)); } catch { /* quota */ }
     } catch (err) {
       console.error('[auto-refresh]', err);
     }
-  }, [hasConfig]);
+  }, [client, dateKey, hasConfig, offlineCacheKey]);
 
   // Auto-refresh: 5-min interval + refetch on tab focus if stale
   useEffect(() => {
@@ -355,13 +357,14 @@ export function useKioskData(
     weekStart,
     weekDays,
     calendarByDay,
+    supplyModule,
     routineChecks,
     toggleRoutine,
     refresh: async () => {
-      if (supabase) {
+      if (client) {
         try {
           setLoading(true);
-          const data = await fetchAll();
+          const data = await fetchFamilyData(client, getRelativeDateKey(dateKey, -30), getRelativeDateKey(dateKey, 30));
           setRawData(data);
           setRoutineChecks(data.kidRoutineChecks);
         } catch (err) {
@@ -380,172 +383,3 @@ export function useKioskData(
     },
   };
 }
-
-async function fetchAll(): Promise<FamilyData> {
-  if (!supabase) throw new Error('Supabase não configurado (client não criado)');
-
-  const [
-    peopleRes,
-    recurringRes,
-    oneOffRes,
-    replenishRes,
-    templatesRes,
-    checksRes,
-    focusRes,
-    notesRes,
-    settingsRes,
-  ] = await Promise.all([
-    supabase.from('people').select('*').order('sort_order', { ascending: true }),
-    supabase.from('recurring_items').select('*'),
-    supabase.from('one_off_items').select('*'),
-    supabase.from('replenish_items').select('*'),
-    supabase.from('kid_routine_templates').select('*'),
-    supabase.from('kid_routine_checks').select('*'),
-    supabase.from('weekly_focus').select('*'),
-    supabase.from('homeschool_notes').select('*'),
-    supabase.from('settings').select('*').eq('id', 1),
-  ]);
-
-  const anyError =
-    peopleRes.error ||
-    recurringRes.error ||
-    oneOffRes.error ||
-    replenishRes.error ||
-    templatesRes.error ||
-    checksRes.error ||
-    focusRes.error ||
-    notesRes.error ||
-    settingsRes.error;
-  if (anyError) throw anyError;
-
-  const people = (peopleRes.data ?? [])
-    .map(toPerson)
-    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-
-  const recurringItems = (recurringRes.data ?? []).map(toRecurring);
-  const oneOffItems = (oneOffRes.data ?? []).map(toOneOff);
-  const replenishItems = (replenishRes.data ?? []).map(toReplenish);
-  const kidRoutineTemplates = (templatesRes.data ?? []).map(toTemplate);
-  const kidRoutineChecks = (checksRes.data ?? []).map(toCheck);
-  const weeklyFocus = (focusRes.data ?? []).map((item) => ({
-    id: item.id,
-    text: item.text,
-    reference: item.reference ?? undefined,
-    isActive: Boolean(item.is_active),
-  }));
-  const homeschoolNotes = (notesRes.data ?? []).map(toHomeschoolNote);
-  const settingsRow = settingsRes.data?.[0] ?? { id: 1, visit_mode: false };
-
-  return {
-    people,
-    recurringItems,
-    oneOffItems,
-    replenishItems,
-    kidRoutineTemplates,
-    kidRoutineChecks,
-    weeklyFocus,
-    homeschoolNotes,
-    settings: { visitMode: Boolean(settingsRow.visit_mode) },
-  };
-}
-
-const toPerson = (row: any): Person => ({
-  id: row.id,
-  name: row.name,
-  color: row.color,
-  type: row.type,
-  isPrivate: Boolean(row.is_private),
-  sortOrder: row.sort_order ?? 0,
-});
-
-const normalizeDbTime = (value: unknown): string | null => {
-  if (typeof value !== 'string') return null;
-  const match = value.trim().match(/^([01]?\d|2[0-3]):([0-5]\d)/);
-  if (!match) return null;
-  return `${match[1].padStart(2, '0')}:${match[2]}`;
-};
-
-const toRecurring = (row: any): RecurringItem => {
-  const rowPersonIds = Array.isArray(row.person_ids)
-    ? row.person_ids.filter(Boolean)
-    : [];
-  const personIds = rowPersonIds.length > 0
-    ? rowPersonIds
-    : row.person_id
-      ? [row.person_id]
-      : [];
-  const personId = row.person_id ?? personIds[0] ?? '';
-  const startTime = normalizeDbTime(row.start_time);
-  const endTime = normalizeDbTime(row.end_time);
-  const timeText = row.time_text ?? (startTime && endTime ? `${startTime}–${endTime}` : startTime ?? '');
-
-  return {
-    id: row.id,
-    title: row.title,
-    dayOfWeek: Number(row.day_of_week ?? 1),
-    timeText,
-    startTime,
-    endTime,
-    personId,
-    personIds,
-    isPrivate: Boolean(row.is_private),
-  };
-};
-
-const toOneOff = (row: any): OneOffItem => {
-  const rowPersonIds = Array.isArray(row.person_ids)
-    ? row.person_ids.filter(Boolean)
-    : [];
-  const personIds = rowPersonIds.length > 0
-    ? rowPersonIds
-    : row.person_id
-      ? [row.person_id]
-      : [];
-  const personId = row.person_id ?? personIds[0] ?? '';
-  const startTime = normalizeDbTime(row.start_time);
-  const endTime = normalizeDbTime(row.end_time);
-  const timeText = row.time_text ?? (startTime && endTime ? `${startTime}–${endTime}` : startTime ?? '');
-
-  return {
-    id: row.id,
-    title: row.title,
-    date: row.date,
-    timeText,
-    startTime,
-    endTime,
-    personId,
-    personIds,
-    isPrivate: Boolean(row.is_private),
-  };
-};
-
-const toReplenish = (row: any): ReplenishItem => ({
-  id: row.id,
-  title: row.title,
-  urgency: row.urgency,
-  isActive: Boolean(row.is_active),
-  isPrivate: Boolean(row.is_private),
-});
-
-const toTemplate = (row: any): KidRoutineTemplate => ({
-  id: row.id,
-  personId: row.person_id,
-  title: row.title,
-  isActive: Boolean(row.is_active),
-  isPrivate: Boolean(row.is_private),
-});
-
-const toCheck = (row: any): KidRoutineCheck => ({
-  id: row.id,
-  templateId: row.template_id,
-  date: row.date,
-  completed: row.completed ?? true,
-});
-
-const toHomeschoolNote = (row: any): HomeschoolNote => ({
-  id: row.id,
-  kidPersonId: row.kid_person_id,
-  notes: row.notes ?? [],
-  createdAt: row.created_at ?? new Date().toISOString(),
-  isPrivate: Boolean(row.is_private),
-});

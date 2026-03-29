@@ -52,6 +52,13 @@ export interface ReplenishItem {
   isPrivate?: boolean;
 }
 
+export interface SupplyItemState {
+  itemId: string;
+  currentStock: number;
+  estimatedUnitPrice?: number | null;
+  updatedAt?: string | null;
+}
+
 export interface WeeklyFocus {
   id: string;
   text: string;
@@ -91,6 +98,7 @@ export interface FamilyData {
   recurringItems: RecurringItem[];
   oneOffItems: OneOffItem[];
   replenishItems: ReplenishItem[];
+  supplyStates: SupplyItemState[];
   kidRoutineTemplates: KidRoutineTemplate[];
   kidRoutineChecks: KidRoutineCheck[];
   weeklyFocus: WeeklyFocus[];

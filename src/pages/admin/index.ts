@@ -4,3 +4,4 @@ export { LoginCard } from './LoginCard';
 export { PeopleAdmin } from './PeopleAdmin';
 export { ReplenishAdmin } from './ReplenishAdmin';
 export { RoutinesAdmin } from './RoutinesAdmin';
+export { SupplyAdmin } from './SupplyAdmin';

@@ -12,9 +12,11 @@ import {
   CardTitle,
   Switch,
 } from '@/components';
+import { getAdminSession, signOutAdmin, subscribeAdminAuth } from '@/lib/api/admin-auth';
+import { updateVisitMode } from '@/lib/api/settings';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { useKioskData } from '@/hooks/useKioskData';
-import { supabase } from '@/lib/supabase';
+import { adminSupabase, hasSupabaseConfig } from '@/lib/supabase';
 
 import {
   AgendaAdmin,
@@ -23,9 +25,10 @@ import {
   PeopleAdmin,
   ReplenishAdmin,
   RoutinesAdmin,
+  SupplyAdmin,
 } from './admin';
 
-type AdminCategory = 'people' | 'agenda' | 'routines' | 'replenish' | 'content';
+type AdminCategory = 'people' | 'agenda' | 'routines' | 'supply' | 'replenish' | 'content';
 
 function EditPage() {
   const navigate = useNavigate();
@@ -39,20 +42,18 @@ function EditPage() {
     sessionToken: session?.access_token ?? null,
   });
 
-  const supabaseReady = Boolean(supabase) && hasConfig;
+  const supabaseReady = Boolean(adminSupabase) && hasSupabaseConfig && hasConfig;
 
   const handleLogout = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
+    if (!adminSupabase) return;
+    await signOutAdmin();
     toast.success('Sessão encerrada');
   };
 
   const toggleVisitMode = async () => {
-    if (!supabase || !session) return;
+    if (!adminSupabase || !session) return;
     const current = data?.settings.visitMode ?? false;
-    const { error } = await supabase
-      .from('settings')
-      .upsert({ id: 1, visit_mode: !current }, { onConflict: 'id' });
+    const { error } = await updateVisitMode(!current);
     if (error) toast.error(error.message);
     else {
       toast.success(current ? 'Modo visitas desativado' : 'Modo visitas ativado');
@@ -61,13 +62,11 @@ function EditPage() {
   };
 
   useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-    });
+    if (!adminSupabase) return;
+    getAdminSession().then(setSession);
+    const subscription = subscribeAdminAuth(setSession);
     return () => {
-      listener?.subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 
@@ -137,7 +136,8 @@ function EditPage() {
                 { key: 'agenda', label: 'Agenda', count: (data?.recurringItems?.length ?? 0) + (data?.oneOffItems?.length ?? 0) },
                 { key: 'people', label: 'Pessoas', count: data?.people?.length },
                 { key: 'routines', label: 'Rotinas', count: data?.kidRoutineTemplates?.length },
-                { key: 'replenish', label: 'Reposição', count: data?.replenishItems?.length },
+                { key: 'supply', label: 'Abastecimento', count: data?.supplyStates?.length },
+                { key: 'replenish', label: 'Lembretes', count: data?.replenishItems?.length },
                 { key: 'content', label: 'Conteúdo', count: (data?.weeklyFocus?.length ?? 0) + (data?.homeschoolNotes?.length ?? 0) },
               ].map((item) => (
                 <Button
@@ -196,6 +196,15 @@ function EditPage() {
             {category === 'replenish' && (
               <ReplenishAdmin
                 items={data?.replenishItems ?? []}
+                loading={loading}
+                refresh={refresh}
+                disabled={!supabaseReady || !session}
+                hasSession={Boolean(session)}
+              />
+            )}
+            {category === 'supply' && (
+              <SupplyAdmin
+                states={data?.supplyStates ?? []}
                 loading={loading}
                 refresh={refresh}
                 disabled={!supabaseReady || !session}

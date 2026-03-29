@@ -1,4 +1,4 @@
-import { addDays, startOfWeek } from 'date-fns';
+import { addDays, format, startOfWeek } from 'date-fns';
 
 import type { FamilyData } from './types';
 
@@ -60,7 +60,7 @@ export const mockData: FamilyData = {
     {
       id: 'o1',
       title: 'Aniversário vovó',
-      date: addDays(sunday, 0).toISOString(),
+      date: format(addDays(sunday, 0), 'yyyy-MM-dd'),
       timeText: '19:00',
       startTime: '19:00',
       endTime: '21:00',
@@ -70,7 +70,7 @@ export const mockData: FamilyData = {
     {
       id: 'o2',
       title: 'Consulta pediatra',
-      date: addDays(sunday, 3).toISOString(),
+      date: format(addDays(sunday, 3), 'yyyy-MM-dd'),
       timeText: '09:20',
       startTime: '09:20',
       endTime: '10:00',
@@ -80,7 +80,7 @@ export const mockData: FamilyData = {
     {
       id: 'o3',
       title: 'Playdate',
-      date: addDays(sunday, 6).toISOString(),
+      date: format(addDays(sunday, 6), 'yyyy-MM-dd'),
       timeText: '15:00',
       startTime: '15:00',
       endTime: '17:00',
@@ -94,6 +94,13 @@ export const mockData: FamilyData = {
     { id: 'rep2', title: 'Leite vegetal', urgency: 'soon', isActive: true },
     { id: 'rep3', title: 'Lápis de cor', urgency: 'soon', isActive: true, isPrivate: true },
     { id: 'rep4', title: 'Pilhas AA', urgency: 'now', isActive: false },
+  ],
+  supplyStates: [
+    { itemId: 'arroz-branco', currentStock: 4, estimatedUnitPrice: 6.5, updatedAt: today.toISOString() },
+    { itemId: 'feijao', currentStock: 1, estimatedUnitPrice: 9.8, updatedAt: today.toISOString() },
+    { itemId: 'folhosas-feira', currentStock: 1, estimatedUnitPrice: 7.5, updatedAt: today.toISOString() },
+    { itemId: 'paracetamol', currentStock: 0, estimatedUnitPrice: 12, updatedAt: today.toISOString() },
+    { itemId: 'gas-cozinha', currentStock: 1, estimatedUnitPrice: 110, updatedAt: today.toISOString() },
   ],
   kidRoutineTemplates: [
     { id: 'kt1', personId: 'benjamin', title: 'Arrumar cama', isActive: true },
