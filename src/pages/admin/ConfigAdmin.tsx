@@ -8,9 +8,9 @@ import {
   CardTitle,
   Switch,
 } from '@/components';
-import { supabase } from '@/lib/supabase';
+import { updateVisitMode } from '@/lib/api/settings';
 import type { AdminSectionProps } from './shared';
-import { requireAuth } from './shared';
+import { requireAuth } from './auth';
 
 export function ConfigAdmin({
   visitMode,
@@ -21,9 +21,7 @@ export function ConfigAdmin({
 }: AdminSectionProps & { visitMode: boolean }) {
   const toggleVisit = async () => {
     if (!requireAuth(hasSession)) return;
-    const { error } = await supabase!
-      .from('settings')
-      .upsert({ id: 1, visit_mode: !visitMode }, { onConflict: 'id' });
+    const { error } = await updateVisitMode(!visitMode);
     if (error) toast.error(error.message);
     else {
       toast.success('Configuração salva');

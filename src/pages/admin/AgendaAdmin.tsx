@@ -22,17 +22,26 @@ import {
   Input,
   Separator,
 } from '@/components';
-import { supabase } from '@/lib/supabase';
+import {
+  createOneOffAgendaItem,
+  createRecurringAgendaItem,
+  deleteAgendaItem,
+  type AgendaTable,
+  updateAgendaItem,
+  updateAgendaPrivacy,
+  updateAgendaTitle,
+} from '@/lib/api/agenda';
 import type { OneOffItem, Person, RecurringItem } from '@/lib/types';
 import type { AdminSectionProps } from './shared';
-import { requireAuth, EmptyState, EditableText, DeleteConfirmButton } from './shared';
+import { requireAuth } from './auth';
+import { EmptyState, EditableText, DeleteConfirmButton } from './shared';
 
 const dayNames: Record<number, string> = {
   1: 'Domingo', 2: 'Segunda', 3: 'Terça', 4: 'Quarta', 5: 'Quinta', 6: 'Sexta', 7: 'Sábado',
 };
 
 type AgendaEditForm = {
-  table: 'recurring_items' | 'one_off_items';
+  table: AgendaTable;
   id: string;
   title: string;
   dayOfWeek: number;
@@ -99,11 +108,6 @@ export function AgendaAdmin({
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
   };
 
-  const buildTimeLabel = (startTime: string | null, endTime: string | null): string | null => {
-    if (startTime && endTime) return `${startTime}–${endTime}`;
-    return startTime ?? null;
-  };
-
   const isEndAfterStart = (startTime: string, endTime: string) => endTime > startTime;
 
   const openRecurringEditor = (item: RecurringItem) => {
@@ -159,20 +163,15 @@ export function AgendaAdmin({
 
     const payload = {
       title: editForm.title.trim(),
-      time_text: buildTimeLabel(normalizedStartTime, normalizedEndTime),
       start_time: normalizedStartTime,
       end_time: normalizedEndTime,
-      person_id: editForm.personIds[0],
       person_ids: editForm.personIds,
       ...(editForm.table === 'recurring_items'
         ? { day_of_week: editForm.dayOfWeek }
         : { date: editForm.date }),
     };
 
-    const { error } = await supabase!
-      .from(editForm.table)
-      .update(payload)
-      .eq('id', editForm.id);
+    const { error } = await updateAgendaItem(editForm.table, editForm.id, payload);
     if (error) return toast.error(error.message);
 
     toast.success('Evento atualizado');
@@ -199,19 +198,16 @@ export function AgendaAdmin({
       return toast.error('A hora final deve ser depois da hora inicial.');
     }
 
-    const timeLabel = buildTimeLabel(normalizedStartTime, normalizedEndTime);
     try {
       const payload = {
         title: recForm.title,
         day_of_week: recForm.dayOfWeek,
-        time_text: timeLabel,
         start_time: normalizedStartTime,
         end_time: normalizedEndTime,
-        person_id: recForm.personIds[0],
         person_ids: recForm.personIds,
         is_private: false,
       };
-      const { error } = await supabase!.from('recurring_items').insert(payload);
+      const { error } = await createRecurringAgendaItem(payload);
       if (error) return toast.error(error.message);
       toast.success('Evento recorrente criado');
       setRecForm((prev) => ({ ...prev, title: '', startTime: '', endTime: '', personIds: [] }));
@@ -243,19 +239,16 @@ export function AgendaAdmin({
       return toast.error('A hora final deve ser depois da hora inicial.');
     }
 
-    const timeLabel = buildTimeLabel(normalizedStartTime, normalizedEndTime);
     try {
       const payload = {
         title: oneOffForm.title,
         date: oneOffForm.date,
-        time_text: timeLabel,
         start_time: normalizedStartTime,
         end_time: normalizedEndTime,
-        person_id: oneOffForm.personIds[0],
         person_ids: oneOffForm.personIds,
         is_private: false,
       };
-      const { error } = await supabase!.from('one_off_items').insert(payload);
+      const { error } = await createOneOffAgendaItem(payload);
       if (error) return toast.error(error.message);
       toast.success('Evento pontual criado');
       setOneOffForm((prev) => ({ ...prev, title: '', startTime: '', endTime: '', personIds: [] }));
@@ -266,23 +259,23 @@ export function AgendaAdmin({
     }
   };
 
-  const updateTitle = async (table: 'recurring_items' | 'one_off_items', id: string, newTitle: string) => {
+  const updateTitle = async (table: AgendaTable, id: string, newTitle: string) => {
     if (!requireAuth(hasSession)) return;
-    const { error } = await supabase!.from(table).update({ title: newTitle }).eq('id', id);
+    const { error } = await updateAgendaTitle(table, id, newTitle);
     if (error) toast.error(error.message);
     else { toast.success('Atualizado'); refresh(); }
   };
 
-  const togglePrivacy = async (table: 'recurring_items' | 'one_off_items', id: string, currentValue: boolean) => {
+  const togglePrivacy = async (table: AgendaTable, id: string, currentValue: boolean) => {
     if (!requireAuth(hasSession)) return;
-    const { error } = await supabase!.from(table).update({ is_private: !currentValue }).eq('id', id);
+    const { error } = await updateAgendaPrivacy(table, id, !currentValue);
     if (error) toast.error(error.message);
     else { toast.success('Atualizado'); refresh(); }
   };
 
-  const deleteItem = async (table: 'recurring_items' | 'one_off_items', id: string) => {
+  const deleteItem = async (table: AgendaTable, id: string) => {
     if (!requireAuth(hasSession)) return;
-    const { error } = await supabase!.from(table).delete().eq('id', id);
+    const { error } = await deleteAgendaItem(table, id);
     if (error) toast.error(error.message);
     else { toast.success('Removido'); refresh(); }
   };
@@ -293,7 +286,9 @@ export function AgendaAdmin({
   };
 
   const eventTimeLabel = (item: { startTime?: string | null; endTime?: string | null; timeText?: string | null }) =>
-    buildTimeLabel(item.startTime ?? null, item.endTime ?? null) ?? item.timeText ?? null;
+    item.startTime && item.endTime
+      ? `${item.startTime}–${item.endTime}`
+      : item.startTime ?? item.timeText ?? null;
 
   return (
     <Card>

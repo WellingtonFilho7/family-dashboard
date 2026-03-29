@@ -1,4 +1,4 @@
-import { Eye, EyeOff, LogIn, RefreshCcw, UserPlus } from 'lucide-react';
+import { Eye, EyeOff, LogIn, RefreshCcw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -11,27 +11,36 @@ import {
   CardTitle,
   Input,
 } from '@/components';
-import { supabase } from '@/lib/supabase';
+import { sendAdminPasswordReset, signInAdmin } from '@/lib/api/admin-auth';
 
-export function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
+type LoginCardProps = {
+  supabaseReady: boolean;
+  recoveryMode?: boolean;
+  recoverySessionReady?: boolean;
+  onSubmitNewPassword?: (password: string) => Promise<void>;
+};
+
+export function LoginCard({
+  supabaseReady,
+  recoveryMode = false,
+  recoverySessionReady = false,
+  onSubmitNewPassword,
+}: LoginCardProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const [isReset, setIsReset] = useState(false);
 
   const handleResetPassword = async () => {
-    if (!supabase) return;
     if (!email) {
       toast.error('Preencha o e-mail para redefinir a senha');
       return;
     }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/editar`,
-      });
+      const { error } = await sendAdminPasswordReset(email, `${window.location.origin}/editar?mode=recovery`);
       if (error) {
         toast.error(error.message);
       } else {
@@ -45,9 +54,41 @@ export function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
     }
   };
 
+  const handleSubmitNewPassword = async () => {
+    if (!supabaseReady) {
+      toast.error('Configurar VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
+      return;
+    }
+    if (!recoverySessionReady || !onSubmitNewPassword) {
+      toast.error('Abra o link de redefinição novamente para continuar');
+      return;
+    }
+    if (!password || !confirmPassword) {
+      toast.error('Preencha a nova senha e a confirmação');
+      return;
+    }
+    if (password.length < 6) {
+      toast.error('Senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await onSubmitNewPassword(password);
+      setPassword('');
+      setConfirmPassword('');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!supabase) {
+    if (!supabaseReady) {
       toast.error('Configurar VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
       return;
     }
@@ -62,24 +103,15 @@ export function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
 
     setLoading(true);
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) {
-          toast.error(error.message);
+      const { error } = await signInAdmin(email, password);
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error('E-mail ou senha incorretos');
         } else {
-          toast.success('Conta criada com sucesso!', {
-            description: 'Você já está logado.',
-          });
+          toast.error(error.message);
         }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            toast.error('E-mail ou senha incorretos');
-          } else {
-            toast.error(error.message);
-          }
-        }
+        toast.success('Login realizado');
       }
     } finally {
       setLoading(false);
@@ -91,7 +123,11 @@ export function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
       <CardHeader>
         <CardTitle>Área administrativa</CardTitle>
         <CardDescription>
-          {isReset ? 'Enviaremos um link para redefinir sua senha.' : isSignUp ? 'Criar conta de administrador.' : 'Entre com e-mail e senha.'}
+          {recoveryMode
+            ? 'Defina sua nova senha para concluir a recuperação.'
+            : isReset
+              ? 'Enviaremos um link para redefinir sua senha.'
+              : 'Entre com e-mail e senha.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -100,7 +136,62 @@ export function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
             Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para ativar o login.
           </div>
         )}
-        {isReset ? (
+        {recoveryMode ? (
+          <div className="space-y-3">
+            {!recoverySessionReady ? (
+              <div className="rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground">
+                Validando o link de recuperação. Se isso não avançar, abra o link recebido no e-mail novamente.
+              </div>
+            ) : null}
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-foreground">Nova senha</label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={!supabaseReady || loading}
+                  autoComplete="new-password"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-foreground">Confirmar senha</label>
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={!supabaseReady || loading}
+                autoComplete="new-password"
+              />
+            </div>
+            <Button
+              onClick={handleSubmitNewPassword}
+              disabled={!supabaseReady || loading || !recoverySessionReady}
+              className="w-full"
+            >
+              {loading ? (
+                <>
+                  <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                'Salvar nova senha'
+              )}
+            </Button>
+          </div>
+        ) : isReset ? (
           <div className="space-y-3">
             <div className="space-y-1.5">
               <label className="text-sm font-semibold text-foreground">E-mail</label>
@@ -154,7 +245,7 @@ export function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={!supabaseReady || loading}
-                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                    autoComplete="current-password"
                     className="pr-10"
                   />
                   <button
@@ -171,12 +262,7 @@ export function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
                 {loading ? (
                   <>
                     <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
-                    {isSignUp ? 'Criando...' : 'Entrando...'}
-                  </>
-                ) : isSignUp ? (
-                  <>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Criar conta
+                    Entrando...
                   </>
                 ) : (
                   <>
@@ -187,21 +273,12 @@ export function LoginCard({ supabaseReady }: { supabaseReady: boolean }) {
               </Button>
             </form>
             <div className="flex flex-col items-center gap-1.5">
-              {!isSignUp && (
-                <button
-                  type="button"
-                  onClick={() => setIsReset(true)}
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  Esqueci minha senha
-                </button>
-              )}
               <button
                 type="button"
-                onClick={() => setIsSignUp((prev) => !prev)}
+                onClick={() => setIsReset(true)}
                 className="text-sm text-muted-foreground hover:text-foreground"
               >
-                {isSignUp ? 'Já tem conta? Entrar' : 'Primeira vez? Criar conta'}
+                Esqueci minha senha
               </button>
             </div>
           </>

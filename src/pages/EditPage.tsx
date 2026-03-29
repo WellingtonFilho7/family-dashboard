@@ -12,7 +12,13 @@ import {
   CardTitle,
   Switch,
 } from '@/components';
-import { getAdminSession, signOutAdmin, subscribeAdminAuth } from '@/lib/api/admin-auth';
+import {
+  getAdminSession,
+  isPasswordRecoveryLocation,
+  signOutAdmin,
+  subscribeAdminAuth,
+  updateAdminPassword,
+} from '@/lib/api/admin-auth';
 import { updateVisitMode } from '@/lib/api/settings';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { useKioskData } from '@/hooks/useKioskData';
@@ -35,6 +41,10 @@ function EditPage() {
   const [dark, toggleDark] = useDarkMode();
   const [session, setSession] = useState<Session | null>(null);
   const [category, setCategory] = useState<AdminCategory>('agenda');
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return isPasswordRecoveryLocation(window.location);
+  });
 
   const { data, loading, refresh, isMock, hasConfig } = useKioskData(false, {
     bypassVisitMode: true,
@@ -64,11 +74,33 @@ function EditPage() {
   useEffect(() => {
     if (!adminSupabase) return;
     getAdminSession().then(setSession);
-    const subscription = subscribeAdminAuth(setSession);
+    const subscription = subscribeAdminAuth((nextSession, event) => {
+      setSession(nextSession);
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true);
+      }
+      if (event === 'SIGNED_OUT') {
+        setIsPasswordRecovery(false);
+      }
+    });
     return () => {
       subscription?.unsubscribe();
     };
   }, []);
+
+  const handlePasswordRecoveryComplete = async (password: string) => {
+    const { error } = await updateAdminPassword(password);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setIsPasswordRecovery(false);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, '', '/editar');
+    }
+    toast.success('Senha atualizada');
+  };
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background px-4 py-4">
@@ -88,7 +120,7 @@ function EditPage() {
             <Button variant="ghost" size="icon" className="h-9 w-9" onClick={refresh} disabled={loading} aria-label="Atualizar dados">
               <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
-            {session && (
+            {session && !isPasswordRecovery && (
               <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleLogout} aria-label="Sair">
                 <LogOut className="h-4 w-4" />
               </Button>
@@ -97,7 +129,7 @@ function EditPage() {
         </div>
 
         {/* Visit mode toggle — inline under header */}
-        {session && (
+        {session && !isPasswordRecovery && (
           <div className="flex items-center justify-between rounded-lg border bg-card px-4 py-2.5">
             <span className="text-sm font-medium">Modo visitas</span>
             <Switch
@@ -129,7 +161,7 @@ function EditPage() {
         ) : null}
 
         {/* Category tabs — horizontal scroll */}
-        {session ? (
+        {session && !isPasswordRecovery ? (
           <div className="-mx-4 px-4">
             <div className="flex gap-2 overflow-x-auto pb-1">
               {[
@@ -159,8 +191,13 @@ function EditPage() {
           </div>
         ) : null}
 
-        {!session ? (
-          <LoginCard supabaseReady={supabaseReady} />
+        {!session || isPasswordRecovery ? (
+          <LoginCard
+            supabaseReady={supabaseReady}
+            recoveryMode={isPasswordRecovery}
+            recoverySessionReady={Boolean(session)}
+            onSubmitNewPassword={handlePasswordRecoveryComplete}
+          />
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {category === 'people' && (

@@ -16,10 +16,17 @@ import {
   Input,
   Separator,
 } from '@/components';
-import { supabase } from '@/lib/supabase';
+import {
+  createPerson,
+  deletePerson,
+  swapPeopleSortOrder,
+  updatePerson,
+  type UpdatePersonInput,
+} from '@/lib/api/people';
 import type { Person } from '@/lib/types';
 import type { AdminSectionProps } from './shared';
-import { requireAuth, EmptyState, EditableText, DeleteConfirmButton } from './shared';
+import { requireAuth } from './auth';
+import { EmptyState, EditableText, DeleteConfirmButton } from './shared';
 
 const typeLabels: Record<string, string> = { kid: 'Criança', adult: 'Adulto', guest: 'Visitante' };
 
@@ -44,12 +51,12 @@ export function PeopleAdmin({
     if (!form.name.trim()) return toast.error('Nome é obrigatório');
     setIsCreating(true);
     try {
-      const { error } = await supabase!.from('people').insert({
+      const { error } = await createPerson({
         name: form.name.trim(),
         color: form.color,
-        type: form.type,
-        sort_order: (people?.length ?? 0) + 1,
-        is_private: form.isPrivate,
+        type: form.type as Person['type'],
+        sortOrder: (people?.length ?? 0) + 1,
+        isPrivate: form.isPrivate,
       });
       if (error) return toast.error(error.message);
       toast.success('Pessoa criada');
@@ -61,9 +68,9 @@ export function PeopleAdmin({
     }
   };
 
-  const updatePerson = async (id: string, patch: Record<string, unknown>) => {
+  const handleUpdatePerson = async (id: string, patch: UpdatePersonInput) => {
     if (!requireAuth(hasSession)) return;
-    const { error } = await supabase!.from('people').update(patch).eq('id', id);
+    const { error } = await updatePerson(id, patch);
     if (error) toast.error(error.message);
     else {
       toast.success('Atualizado');
@@ -78,17 +85,22 @@ export function PeopleAdmin({
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
     if (swapIdx < 0 || swapIdx >= sorted.length) return;
     const other = sorted[swapIdx];
-    await Promise.all([
-      supabase!.from('people').update({ sort_order: other.sortOrder ?? 0 }).eq('id', person.id),
-      supabase!.from('people').update({ sort_order: person.sortOrder ?? 0 }).eq('id', other.id),
-    ]);
+    const [first, second] = await swapPeopleSortOrder(
+      person.id,
+      person.sortOrder ?? 0,
+      other.id,
+      other.sortOrder ?? 0,
+    );
+    if (first.error || second.error) {
+      return toast.error(first.error?.message ?? second.error?.message ?? 'Erro ao reordenar');
+    }
     toast.success('Ordem alterada');
     refresh();
   };
 
-  const deletePerson = async (id: string) => {
+  const handleDeletePerson = async (id: string) => {
     if (!requireAuth(hasSession)) return;
-    const { error } = await supabase!.from('people').delete().eq('id', id);
+    const { error } = await deletePerson(id);
     if (error) toast.error(error.message);
     else {
       toast.success('Removido');
@@ -175,7 +187,7 @@ export function PeopleAdmin({
                   <div className="min-w-0">
                     <EditableText
                       value={person.name}
-                      onSave={async (newName) => updatePerson(person.id, { name: newName })}
+                      onSave={async (newName) => handleUpdatePerson(person.id, { name: newName })}
                       disabled={disabled}
                     />
                     <p className="text-xs text-muted-foreground">
@@ -212,14 +224,14 @@ export function PeopleAdmin({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => updatePerson(person.id, { is_private: !person.isPrivate })}>
+                      <DropdownMenuItem onClick={() => handleUpdatePerson(person.id, { is_private: !person.isPrivate })}>
                         {person.isPrivate ? 'Tornar público' : 'Tornar privado'}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <DeleteConfirmButton
                     itemName={person.name}
-                    onConfirm={() => deletePerson(person.id)}
+                    onConfirm={() => handleDeletePerson(person.id)}
                     disabled={disabled}
                     warning={`Ao remover "${person.name}", todos os eventos e rotinas associados ficarão órfãos.`}
                   />

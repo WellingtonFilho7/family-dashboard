@@ -15,21 +15,12 @@ import {
   Button,
   Input,
 } from '@/components';
-import { supabase } from '@/lib/supabase';
 
 export interface AdminSectionProps {
   loading: boolean;
   refresh: () => Promise<void>;
   disabled: boolean;
   hasSession: boolean;
-}
-
-export function requireAuth(hasSession: boolean): boolean {
-  if (!supabase || !hasSession) {
-    toast.error('Faça login para editar');
-    return false;
-  }
-  return true;
 }
 
 export function EmptyState({ message }: { message: string }) {

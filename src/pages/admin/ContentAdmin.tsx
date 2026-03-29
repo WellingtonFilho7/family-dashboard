@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -11,10 +11,84 @@ import {
   Input,
   Separator,
 } from '@/components';
-import { supabase } from '@/lib/supabase';
+import { setWeeklyFocus, upsertHomeschoolNote } from '@/lib/api/content';
 import type { HomeschoolNote, Person, WeeklyFocus } from '@/lib/types';
 import type { AdminSectionProps } from './shared';
-import { requireAuth, EmptyState } from './shared';
+import { requireAuth } from './auth';
+import { EmptyState } from './shared';
+
+function FocusEditor({
+  initialText,
+  initialReference,
+  disabled,
+  loading,
+  onSave,
+}: {
+  initialText: string;
+  initialReference: string;
+  disabled: boolean;
+  loading: boolean;
+  onSave: (payload: { text: string; reference: string }) => Promise<void>;
+}) {
+  const [form, setForm] = useState({
+    text: initialText,
+    reference: initialReference,
+  });
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm font-semibold">Foco da semana</p>
+      <Input
+        placeholder="Texto do versículo ou foco"
+        value={form.text}
+        onChange={(e) => setForm({ ...form, text: e.target.value })}
+        disabled={disabled}
+      />
+      <Input
+        placeholder="Referência (ex: João 3:16)"
+        value={form.reference}
+        onChange={(e) => setForm({ ...form, reference: e.target.value })}
+        disabled={disabled}
+      />
+      <Button
+        onClick={() => onSave({ text: form.text, reference: form.reference })}
+        disabled={disabled || loading}
+        className="w-full"
+      >
+        Salvar foco
+      </Button>
+    </div>
+  );
+}
+
+function HomeschoolEditor({
+  initialContent,
+  disabled,
+  loading,
+  onSave,
+}: {
+  initialContent: string;
+  disabled: boolean;
+  loading: boolean;
+  onSave: (content: string) => Promise<void>;
+}) {
+  const [content, setContent] = useState(initialContent);
+
+  return (
+    <>
+      <textarea
+        className="min-h-[100px] w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground"
+        placeholder="Uma linha por tópico"
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        disabled={disabled}
+      />
+      <Button onClick={() => onSave(content)} disabled={disabled || loading} className="w-full">
+        Salvar notas
+      </Button>
+    </>
+  );
+}
 
 export function ContentAdmin({
   people,
@@ -25,49 +99,47 @@ export function ContentAdmin({
   disabled,
   hasSession,
 }: AdminSectionProps & { people: Person[]; focus: WeeklyFocus[]; notes: HomeschoolNote[] }) {
-  const [focusForm, setFocusForm] = useState({
-    text: focus.find((f) => f.isActive)?.text ?? '',
-    reference: focus.find((f) => f.isActive)?.reference ?? '',
-  });
+  const activeFocus = useMemo(() => focus.find((item) => item.isActive) ?? null, [focus]);
   const kids = people.filter((p) => p.type === 'kid');
   const [noteKid, setNoteKid] = useState(kids[0]?.id ?? '');
-  const [noteContent, setNoteContent] = useState('');
+  const selectedKidId = noteKid || kids[0]?.id || '';
+  const selectedNote = notes.find((n) => n.kidPersonId === selectedKidId);
 
-  const selectedNote = notes.find((n) => n.kidPersonId === noteKid);
-
-  const saveFocus = async () => {
+  const saveFocus = async ({ text, reference }: { text: string; reference: string }): Promise<void> => {
     if (!requireAuth(hasSession)) return;
-    if (!focusForm.text) return toast.error('Texto é obrigatório');
-    await supabase!.from('weekly_focus').update({ is_active: false });
-    const { error } = await supabase!.from('weekly_focus').insert({
-      text: focusForm.text,
-      reference: focusForm.reference,
-      is_active: true,
-    });
-    if (error) return toast.error(error.message);
+    if (!text) {
+      toast.error('Texto é obrigatório');
+      return;
+    }
+    const { error } = await setWeeklyFocus(activeFocus?.id ?? null, text, reference);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success('Foco atualizado');
-    refresh();
+    await refresh();
   };
 
-  const saveNotes = async () => {
+  const saveNotes = async (content: string): Promise<void> => {
     if (!requireAuth(hasSession)) return;
-    if (!noteKid) return;
-    const list = noteContent
+    if (!selectedKidId) return;
+    const list = content
       .split('\n')
       .map((l) => l.trim())
       .filter(Boolean);
-    const existing = notes.find((n) => n.kidPersonId === noteKid);
-    const payload = { kid_person_id: noteKid, notes: list, is_private: existing?.isPrivate ?? false };
-    let error;
-    if (existing) {
-      ({ error } = await supabase!.from('homeschool_notes').update(payload).eq('id', existing.id));
-    } else {
-      ({ error } = await supabase!.from('homeschool_notes').insert(payload));
+    const existing = notes.find((n) => n.kidPersonId === selectedKidId);
+    const { error } = await upsertHomeschoolNote(
+      existing?.id ?? null,
+      selectedKidId,
+      list,
+      existing?.isPrivate ?? false,
+    );
+    if (error) {
+      toast.error(error.message);
+      return;
     }
-    if (error) return toast.error(error.message);
     toast.success('Notas salvas');
-    setNoteContent('');
-    refresh();
+    await refresh();
   };
 
   return (
@@ -77,24 +149,14 @@ export function ContentAdmin({
         <CardDescription>Versículo da semana e tópicos de homeschool.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-3">
-          <p className="text-sm font-semibold">Foco da semana</p>
-          <Input
-            placeholder="Texto do versículo ou foco"
-            value={focusForm.text}
-            onChange={(e) => setFocusForm({ ...focusForm, text: e.target.value })}
-            disabled={disabled}
-          />
-          <Input
-            placeholder="Referência (ex: João 3:16)"
-            value={focusForm.reference}
-            onChange={(e) => setFocusForm({ ...focusForm, reference: e.target.value })}
-            disabled={disabled}
-          />
-          <Button onClick={saveFocus} disabled={disabled || loading} className="w-full">
-            Salvar foco
-          </Button>
-        </div>
+        <FocusEditor
+          key={activeFocus?.id ?? 'new-focus'}
+          initialText={activeFocus?.text ?? ''}
+          initialReference={activeFocus?.reference ?? ''}
+          disabled={disabled}
+          loading={loading}
+          onSave={saveFocus}
+        />
 
         <Separator />
 
@@ -102,7 +164,7 @@ export function ContentAdmin({
           <p className="text-sm font-semibold">Homeschool</p>
           <select
             className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base"
-            value={noteKid}
+            value={selectedKidId}
             onChange={(e) => setNoteKid(e.target.value)}
             disabled={disabled}
           >
@@ -129,16 +191,13 @@ export function ContentAdmin({
             <EmptyState message="Sem notas de homeschool para esta criança." />
           )}
 
-          <textarea
-            className="min-h-[100px] w-full rounded-lg border bg-background text-foreground px-3 py-2 text-sm"
-            placeholder="Uma linha por tópico"
-            value={noteContent}
-            onChange={(e) => setNoteContent(e.target.value)}
+          <HomeschoolEditor
+            key={`${selectedKidId}:${selectedNote?.id ?? 'new-note'}`}
+            initialContent={selectedNote?.notes.join('\n') ?? ''}
             disabled={disabled}
+            loading={loading}
+            onSave={saveNotes}
           />
-          <Button onClick={saveNotes} disabled={disabled || loading} className="w-full">
-            Salvar notas
-          </Button>
         </div>
       </CardContent>
     </Card>

@@ -17,10 +17,15 @@ import {
   Input,
   Separator,
 } from '@/components';
-import { supabase } from '@/lib/supabase';
+import {
+  createRoutineTemplate,
+  deleteRoutineTemplate,
+  updateRoutineTemplate,
+} from '@/lib/api/routines';
 import type { KidRoutineTemplate, Person } from '@/lib/types';
 import type { AdminSectionProps } from './shared';
-import { requireAuth, EmptyState, EditableText, DeleteConfirmButton } from './shared';
+import { requireAuth } from './auth';
+import { EmptyState, EditableText, DeleteConfirmButton } from './shared';
 
 export function RoutinesAdmin({
   people,
@@ -36,16 +41,12 @@ export function RoutinesAdmin({
     title: '',
     personId: kids[0]?.id ?? '',
   });
+  const selectedKidId = form.personId || kids[0]?.id || '';
 
   const createTemplate = async () => {
     if (!requireAuth(hasSession)) return;
-    if (!form.title || !form.personId) return toast.error('Título e criança são obrigatórios');
-    const { error } = await supabase!.from('kid_routine_templates').insert({
-      title: form.title,
-      person_id: form.personId,
-      is_active: true,
-      is_private: false,
-    });
+    if (!form.title || !selectedKidId) return toast.error('Título e criança são obrigatórios');
+    const { error } = await createRoutineTemplate(form.title, selectedKidId);
     if (error) return toast.error(error.message);
     toast.success('Rotina criada');
     setForm((prev) => ({ ...prev, title: '' }));
@@ -55,21 +56,21 @@ export function RoutinesAdmin({
 
   const toggleTemplate = async (id: string, field: 'is_active' | 'is_private', value: boolean) => {
     if (!requireAuth(hasSession)) return;
-    const { error } = await supabase!.from('kid_routine_templates').update({ [field]: value }).eq('id', id);
+    const { error } = await updateRoutineTemplate(id, { [field]: value });
     if (error) toast.error(error.message);
     else { toast.success('Atualizado'); refresh(); }
   };
 
   const updateTitle = async (id: string, newTitle: string) => {
     if (!requireAuth(hasSession)) return;
-    const { error } = await supabase!.from('kid_routine_templates').update({ title: newTitle }).eq('id', id);
+    const { error } = await updateRoutineTemplate(id, { title: newTitle });
     if (error) toast.error(error.message);
     else { toast.success('Atualizado'); refresh(); }
   };
 
   const deleteTemplate = async (id: string) => {
     if (!requireAuth(hasSession)) return;
-    const { error } = await supabase!.from('kid_routine_templates').delete().eq('id', id);
+    const { error } = await deleteRoutineTemplate(id);
     if (error) toast.error(error.message);
     else { toast.success('Removido'); refresh(); }
   };
@@ -93,7 +94,7 @@ export function RoutinesAdmin({
           <>
             <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
               <Input placeholder="Ex: Escovar os dentes" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} disabled={disabled} />
-              <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base" value={form.personId} onChange={(e) => setForm({ ...form, personId: e.target.value })} disabled={disabled}>
+              <select className="h-11 w-full rounded-lg border bg-background text-foreground px-3 text-base" value={selectedKidId} onChange={(e) => setForm({ ...form, personId: e.target.value })} disabled={disabled}>
                 {kids.map((kid) => <option key={kid.id} value={kid.id}>{kid.name}</option>)}
               </select>
               <Button onClick={createTemplate} disabled={disabled || loading} className="w-full">Criar rotina</Button>
