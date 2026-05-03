@@ -14,6 +14,7 @@ export interface MockEvent {
   title: string;
   time: string;
   startMinutes: number | null;
+  endMinutes: number | null;
   personIds: string[];
 }
 
@@ -39,26 +40,28 @@ export const mockPeople: MockPerson[] = [
 ];
 
 export const mockEvents: MockEvent[] = [
-  { id: 'e01', dayOfWeek: 0, title: 'Culto', time: '9h - 11h', startMinutes: 540, personIds: ['wellington', 'amy', 'liam', 'olivia'] },
-  { id: 'e02', dayOfWeek: 0, title: 'Almoço família', time: '12h', startMinutes: 720, personIds: ['wellington', 'amy', 'liam', 'olivia'] },
+  { id: 'e01', dayOfWeek: 0, title: 'Culto', time: '9h - 11h', startMinutes: 540, endMinutes: 660, personIds: ['wellington', 'amy', 'liam', 'olivia'] },
+  { id: 'e02', dayOfWeek: 0, title: 'Almoço família', time: '12h - 13h', startMinutes: 720, endMinutes: 780, personIds: ['wellington', 'amy', 'liam', 'olivia'] },
 
-  { id: 'e10', dayOfWeek: 1, title: 'Escola', time: '8h - 12h', startMinutes: 480, personIds: ['liam', 'olivia'] },
-  { id: 'e11', dayOfWeek: 1, title: 'Prova de matemática', time: '10h', startMinutes: 600, personIds: ['olivia'] },
+  { id: 'e10', dayOfWeek: 1, title: 'Escola', time: '8h - 12h', startMinutes: 480, endMinutes: 720, personIds: ['liam', 'olivia'] },
+  { id: 'e11', dayOfWeek: 1, title: 'Prova de matemática', time: '10h - 10:30', startMinutes: 600, endMinutes: 630, personIds: ['olivia'] },
+  { id: 'e12', dayOfWeek: 1, title: 'Reunião pais', time: '19h - 20h', startMinutes: 1140, endMinutes: 1200, personIds: ['wellington', 'amy'] },
 
-  { id: 'e20', dayOfWeek: 2, title: 'Dentista', time: '10h', startMinutes: 600, personIds: ['amy'] },
-  { id: 'e21', dayOfWeek: 2, title: 'Mercado', time: '14h', startMinutes: 840, personIds: ['amy'] },
+  { id: 'e20', dayOfWeek: 2, title: 'Dentista', time: '10h - 11h', startMinutes: 600, endMinutes: 660, personIds: ['amy'] },
+  { id: 'e21', dayOfWeek: 2, title: 'Mercado', time: '14h - 15h', startMinutes: 840, endMinutes: 900, personIds: ['amy'] },
 
-  { id: 'e30', dayOfWeek: 3, title: 'Aniversário da mãe', time: 'dia todo', startMinutes: null, personIds: ['wellington', 'amy', 'liam', 'olivia'] },
-  { id: 'e31', dayOfWeek: 3, title: 'Pagar contas', time: '', startMinutes: null, personIds: ['amy'] },
+  { id: 'e30', dayOfWeek: 3, title: 'Aniversário da mãe', time: 'dia todo', startMinutes: null, endMinutes: null, personIds: ['wellington', 'amy', 'liam', 'olivia'] },
+  { id: 'e31', dayOfWeek: 3, title: 'Pagar contas', time: '', startMinutes: null, endMinutes: null, personIds: ['amy'] },
+  { id: 'e32', dayOfWeek: 3, title: 'Jantar fora', time: '19h - 21h', startMinutes: 1140, endMinutes: 1260, personIds: ['wellington', 'amy'] },
 
-  { id: 'e40', dayOfWeek: 4, title: 'Reunião equipe', time: '10:30', startMinutes: 630, personIds: ['wellington'] },
-  { id: 'e41', dayOfWeek: 4, title: 'Almoço', time: '12h', startMinutes: 720, personIds: ['wellington', 'amy'] },
+  { id: 'e40', dayOfWeek: 4, title: 'Reunião equipe', time: '10:30 - 11:30', startMinutes: 630, endMinutes: 690, personIds: ['wellington'] },
+  { id: 'e41', dayOfWeek: 4, title: 'Almoço', time: '12h - 13h', startMinutes: 720, endMinutes: 780, personIds: ['wellington', 'amy'] },
 
-  { id: 'e50', dayOfWeek: 5, title: 'Field trip', time: '9h - 12h', startMinutes: 540, personIds: ['liam'] },
-  { id: 'e51', dayOfWeek: 5, title: 'Almoço família', time: '12h', startMinutes: 720, personIds: ['wellington', 'amy', 'liam', 'olivia'] },
+  { id: 'e50', dayOfWeek: 5, title: 'Field trip', time: '9h - 12h', startMinutes: 540, endMinutes: 720, personIds: ['liam'] },
+  { id: 'e51', dayOfWeek: 5, title: 'Almoço família', time: '12h - 13h', startMinutes: 720, endMinutes: 780, personIds: ['wellington', 'amy', 'liam', 'olivia'] },
 
-  { id: 'e60', dayOfWeek: 6, title: 'Aula de piano', time: '10h', startMinutes: 600, personIds: ['olivia'] },
-  { id: 'e61', dayOfWeek: 6, title: 'Aniversário Jenny', time: '15h', startMinutes: 900, personIds: ['wellington', 'amy', 'liam', 'olivia'] },
+  { id: 'e60', dayOfWeek: 6, title: 'Aula de piano', time: '10h - 11h', startMinutes: 600, endMinutes: 660, personIds: ['olivia'] },
+  { id: 'e61', dayOfWeek: 6, title: 'Aniversário Jenny', time: '15h - 17h', startMinutes: 900, endMinutes: 1020, personIds: ['wellington', 'amy', 'liam', 'olivia'] },
 ];
 
 export const mockTasks: MockTask[] = [
