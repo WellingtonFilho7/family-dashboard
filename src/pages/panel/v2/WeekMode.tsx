@@ -1,6 +1,7 @@
-import { addDays, format, isSameDay, startOfWeek } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
 
 import { cn } from '@/lib/utils';
 
@@ -12,13 +13,20 @@ import {
   buildDayTimeline,
   nowPercent,
 } from './lib/timeline';
-import { mockEvents, mockPeople } from './mock';
+import type { DayTimelineData } from './lib/timeline';
 import type { MockEvent, MockPerson } from './mock';
+import type { PanelDayBucket, PanelOutletContext } from './PanelV2';
 import { TimelineEventCard } from './components/TimelineEventCard';
 
 const HOURS = Array.from({ length: TIMELINE_VISIBLE_HOURS + 1 }, (_, i) => TIMELINE_START_HOUR + i);
 
+interface AnalyzedBucket {
+  bucket: PanelDayBucket;
+  data: DayTimelineData;
+}
+
 export default function WeekMode() {
+  const { people, dayBuckets, loading, hasData, error } = useOutletContext<PanelOutletContext>();
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -26,15 +34,25 @@ export default function WeekMode() {
     return () => window.clearInterval(id);
   }, []);
 
-  const today = now;
-  const weekStart = startOfWeek(today, { weekStartsOn: 0 });
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-
-  const dayData = days.map((_, dayIndex) =>
-    buildDayTimeline(mockEvents.filter((e) => e.dayOfWeek === dayIndex)),
+  const analyzed = useMemo<AnalyzedBucket[]>(
+    () => dayBuckets.map((bucket) => ({ bucket, data: buildDayTimeline(bucket.events) })),
+    [dayBuckets],
   );
 
-  const hasAnyUntimed = dayData.some((d) => d.untimed.length > 0);
+  if (loading && !hasData) {
+    return <WeekSkeleton />;
+  }
+
+  if (error && !hasData) {
+    return <WeekError message={error} />;
+  }
+
+  if (analyzed.length === 0) {
+    return <WeekSkeleton />;
+  }
+
+  const today = now;
+  const hasAnyUntimed = analyzed.some(({ data }) => data.untimed.length > 0);
   const nowOffset = nowPercent(now);
 
   return (
@@ -42,11 +60,11 @@ export default function WeekMode() {
       {/* Day headers */}
       <div className="grid grid-cols-[44px_repeat(7,minmax(0,1fr))] gap-2">
         <div />
-        {days.map((day) => {
-          const isToday = isSameDay(day, today);
+        {analyzed.map(({ bucket }) => {
+          const isToday = isSameDay(bucket.date, today);
           return (
             <div
-              key={day.toISOString()}
+              key={bucket.date.toISOString()}
               className={cn(
                 'flex items-center justify-between rounded-xl px-2 py-1.5',
                 isToday ? 'bg-primary/10' : 'bg-transparent',
@@ -59,7 +77,7 @@ export default function WeekMode() {
                     isToday ? 'text-primary' : 'text-muted-foreground',
                   )}
                 >
-                  {format(day, 'EEE', { locale: ptBR })}
+                  {format(bucket.date, 'EEE', { locale: ptBR })}
                 </span>
                 <span
                   className={cn(
@@ -67,7 +85,7 @@ export default function WeekMode() {
                     isToday ? 'text-primary' : 'text-foreground',
                   )}
                 >
-                  {format(day, 'd')}
+                  {format(bucket.date, 'd')}
                 </span>
               </div>
               {isToday && (
@@ -86,10 +104,10 @@ export default function WeekMode() {
           <div className="flex items-center justify-end pr-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/70">
             Dia
           </div>
-          {dayData.map((data, dayIndex) => (
-            <div key={dayIndex} className="flex flex-col gap-1">
+          {analyzed.map(({ bucket, data }) => (
+            <div key={bucket.date.toISOString()} className="flex flex-col gap-1">
               {data.untimed.map((event) => (
-                <AllDayPill key={event.id} event={event} people={mockPeople} />
+                <AllDayPill key={event.id} event={event} people={people} />
               ))}
             </div>
           ))}
@@ -99,18 +117,15 @@ export default function WeekMode() {
       {/* Timeline */}
       <div className="grid min-h-0 flex-1 grid-cols-[44px_repeat(7,minmax(0,1fr))] gap-2">
         <TimeColumn />
-        {dayData.map((data, dayIndex) => {
-          const isToday = isSameDay(days[dayIndex], today);
-          return (
-            <DayTimeline
-              key={dayIndex}
-              data={data}
-              people={mockPeople}
-              isToday={isToday}
-              nowOffset={isToday ? nowOffset : null}
-            />
-          );
-        })}
+        {analyzed.map(({ bucket, data }) => (
+          <DayTimelineColumn
+            key={bucket.date.toISOString()}
+            data={data}
+            people={people}
+            isToday={isSameDay(bucket.date, today)}
+            nowOffset={isSameDay(bucket.date, today) ? nowOffset : null}
+          />
+        ))}
       </div>
     </div>
   );
@@ -141,13 +156,13 @@ function TimeColumn() {
   );
 }
 
-function DayTimeline({
+function DayTimelineColumn({
   data,
   people,
   isToday,
   nowOffset,
 }: {
-  data: ReturnType<typeof buildDayTimeline>;
+  data: DayTimelineData;
   people: MockPerson[];
   isToday: boolean;
   nowOffset: number | null;
@@ -159,7 +174,6 @@ function DayTimeline({
         isToday ? 'bg-primary/[0.04]' : 'bg-card/40',
       )}
     >
-      {/* Hour grid lines */}
       {HOURS.slice(1, -1).map((_, i) => {
         const top = ((i + 1) / TIMELINE_VISIBLE_HOURS) * 100;
         return (
@@ -171,7 +185,6 @@ function DayTimeline({
         );
       })}
 
-      {/* Now indicator (only on today) */}
       {nowOffset !== null && (
         <div
           className="pointer-events-none absolute inset-x-0 z-10"
@@ -184,7 +197,6 @@ function DayTimeline({
         </div>
       )}
 
-      {/* Events */}
       {data.timed.map((entry) => (
         <TimelineEventCard key={entry.event.id} entry={entry} people={people} />
       ))}
@@ -214,6 +226,42 @@ function AllDayPill({ event, people }: { event: MockEvent; people: MockPerson[] 
       title={event.title}
     >
       <span className="truncate">{event.title}</span>
+    </div>
+  );
+}
+
+function WeekSkeleton() {
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      <div className="grid grid-cols-[44px_repeat(7,minmax(0,1fr))] gap-2">
+        <div />
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-12 animate-pulse rounded-xl bg-muted/40"
+          />
+        ))}
+      </div>
+      <div className="grid min-h-0 flex-1 grid-cols-[44px_repeat(7,minmax(0,1fr))] gap-2">
+        <div />
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div
+            key={i}
+            className="animate-pulse rounded-xl border border-border/30 bg-muted/30"
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WeekError({ message }: { message: string }) {
+  return (
+    <div className="flex h-full items-center justify-center">
+      <div className="max-w-md rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-center">
+        <p className="text-sm font-semibold text-destructive">Não foi possível carregar a agenda</p>
+        <p className="mt-2 text-xs text-muted-foreground">{message}</p>
+      </div>
     </div>
   );
 }
