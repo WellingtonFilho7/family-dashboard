@@ -5,6 +5,11 @@ import { isDebugEnabled } from '@/lib/debug-utils';
 import EditPage from '@/pages/EditPage';
 import PanelPage from '@/pages/panel/PanelPage';
 import { DesktopOverrideProvider } from '@/pages/panel/desktopOverride';
+import PanelV2 from '@/pages/panel/v2/PanelV2';
+import WeekMode from '@/pages/panel/v2/WeekMode';
+import TodayMode from '@/pages/panel/v2/TodayMode';
+import LearningMode from '@/pages/panel/v2/LearningMode';
+import SettingsMode from '@/pages/panel/v2/SettingsMode';
 
 function App() {
   return (
@@ -12,6 +17,13 @@ function App() {
       <DesktopOverrideProvider>
         <Routes>
           <Route path="/painel" element={<PanelPage />} />
+          <Route path="/painel/v2" element={<PanelV2 />}>
+            <Route index element={<Navigate to="calendario" replace />} />
+            <Route path="calendario" element={<WeekMode />} />
+            <Route path="tarefas" element={<TodayMode />} />
+            <Route path="aprendizado" element={<LearningMode />} />
+            <Route path="configuracoes" element={<SettingsMode />} />
+          </Route>
           <Route path="/editar" element={<EditPage />} />
           <Route path="*" element={<Navigate to="/painel" replace />} />
         </Routes>
