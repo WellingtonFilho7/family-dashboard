@@ -4,7 +4,7 @@
 
 Family Dashboard is a self-hosted family organization tool. Two routes:
 - `/painel` — public kiosk dashboard (ambient display, read-only)
-- `/editar` — admin panel (OTP-protected, phone-optimized CRUD)
+- `/editar` — admin panel (email+password login, phone-optimized CRUD)
 
 Real household tool, not a demo or SaaS. PT-BR UI text, English code.
 
@@ -43,7 +43,7 @@ No custom backend. Path alias: `@/` = `src/`.
 Supabase (Postgres + RLS)
     ↓
 useKioskData(visitMode, options)   ← central hook
-    ↓ fetches 9 tables in parallel (Promise.all)
+    ↓ fetches via src/lib/api/family-data.ts — 10 tables in parallel (Promise.all)
     ↓ maps snake_case → camelCase
     ↓ applies privacy filtering
     ↓ auto-refreshes every 5 min + on tab focus
@@ -56,9 +56,12 @@ PanelPage / EditPage
 
 | File | Role |
 |------|------|
-| `src/hooks/useKioskData.ts` | Central data hook — fetch, filter, auto-refresh, toggle routines |
-| `src/App.tsx` | Routes + PanelPage + CalendarGrid + KidsGrid + Sidebar + RightColumn |
-| `src/pages/EditPage.tsx` | Admin CRUD (people, agenda, routines, replenish, content, config) |
+| `src/App.tsx` | Routing only (~80 lines) |
+| `src/pages/panel/PanelPage.tsx` | Kiosk view — CalendarGrid + KidsGrid + Sidebar + RightColumn |
+| `src/pages/EditPage.tsx` | Admin shell; CRUD decomposed into `src/pages/admin/*` (PeopleAdmin, AgendaAdmin, RoutinesAdmin, ReplenishAdmin, SupplyAdmin, ContentAdmin, ConfigAdmin) |
+| `src/hooks/useKioskData.ts` | Central data hook — filter, auto-refresh, toggle routines |
+| `src/lib/api/` | Supabase queries per domain (family-data, people, agenda, routines, replenish, content, settings, admin-auth) |
+| `src/lib/supply-*.ts` | Household supply module domain logic (+ SupplyAdmin page) |
 | `src/lib/types.ts` | All TypeScript interfaces |
 | `src/lib/supabase.ts` | Supabase client init (null if env vars missing) |
 | `src/lib/date-utils.ts` | Timezone-aware date functions (default: America/Sao_Paulo) |
@@ -101,6 +104,7 @@ Both persist to localStorage, set `data-desktop="1"` on `<html>`.
 | `weekly_focus` | Scripture / focus of the week | No |
 | `homeschool_notes` | Education topics per child | Yes |
 | `settings` | App config (singleton id=1) | No |
+| `supply_item_state` | Household supply tracking (supply module) | No |
 
 ### Key constraints
 
@@ -119,7 +123,7 @@ Both persist to localStorage, set `data-desktop="1"` on `<html>`.
 
 ### Auth
 
-OTP via email (Supabase Auth). Redirect URLs:
+Email + password via Supabase Auth (`signInWithPassword` in `src/lib/api/admin-auth.ts`), with password recovery flow. OTP was removed in Sprint 4 — magic-link auth was fragile and untestable. Redirect URLs (password recovery):
 - Prod: `https://<domain>/editar`
 - Dev: `http://localhost:5173/editar`
 

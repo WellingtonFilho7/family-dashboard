@@ -5,7 +5,7 @@ Dashboard familiar auto-hospedado para organização doméstica diária, constru
 O projeto foi pensado para uso real no dia a dia de uma família, com um **painel público estilo kiosk** e uma **área administrativa protegida**.
 
 - `/painel` → visualização pública (kiosk / dashboard familiar)
-- `/editar` → área administrativa (login via OTP)
+- `/editar` → área administrativa (login com e-mail e senha)
 
 ---
 
@@ -17,7 +17,7 @@ O projeto foi pensado para uso real no dia a dia de uma família, com um **paine
 - **Foco / versículo da semana** sempre visível.
 - **Lista de reposição** com urgência (`now` / `soon`).
 - **Modo visitas** (oculta dados privados e nomes sensíveis).
-- **Admin mobile-first** em `/editar` com CRUD completo após login OTP.
+- **Admin mobile-first** em `/editar` com CRUD completo após login.
 
 ---
 
@@ -25,7 +25,7 @@ O projeto foi pensado para uso real no dia a dia de uma família, com um **paine
 
 - **Frontend:** React, Vite, TypeScript, Tailwind CSS, shadcn/ui  
 - **Backend:** Supabase (Postgres)
-- **Auth:** Supabase Auth (OTP por e-mail) + Row Level Security (RLS)
+- **Auth:** Supabase Auth (e-mail + senha) + Row Level Security (RLS)
 - **Infra:** Vercel (build/deploy) + Supabase (dados e autenticação)
 
 ---
@@ -96,13 +96,14 @@ npm run dev
    * `weekly_focus`
    * `homeschool_notes`
    * `settings`
+   * `supply_item_state`
 3. Ativar **RLS** em todas as tabelas.
 4. Aplicar as **policies**:
 
    * `/painel` (anon): `select` apenas com `is_private = false`
    * `/editar` (authenticated): permissões completas (CRUD)
-5. Criar usuário administrador (login via OTP).
-6. Configurar **Redirect URLs** de OTP:
+5. Criar usuário administrador (e-mail + senha) no Supabase Auth.
+6. Configurar **Redirect URLs** (usadas na recuperação de senha):
 
    * `https://<seu-deploy>/editar`
    * `http://localhost:5173/editar`
@@ -126,7 +127,7 @@ npm run dev
 * **Row Level Security (RLS)** habilitado no banco.
 * Campo `is_private` filtra dados sensíveis no painel público.
 * **Modo visitas** mascara informações adicionais.
-* `/editar` só renderiza o CRUD com sessão válida (OTP).
+* `/editar` só renderiza o CRUD com sessão válida (e-mail + senha via `signInWithPassword`).
 
 ---
 
@@ -136,7 +137,6 @@ npm run dev
 * Em **PROD**, sem Supabase configurado → erro explícito (“Supabase não configurado”).
 * `settings` tratado como **singleton** (`id = 1`).
 * `day_of_week` usa **1–7 (Dom–Sáb)**.
-* OTP possui cooldown para reenvio.
 * Logs de debug opcionais via `VITE_DEBUG_SUPABASE=true`.
 
 ---

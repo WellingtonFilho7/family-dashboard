@@ -42,7 +42,7 @@ Without these, dev mode uses mock data from `src/lib/mockData.ts`.
 **Must pass before merge:**
 1. `npm run build` succeeds
 2. App runs locally without errors
-3. Manual smoke test: OTP login, CRUD, kiosk renders, visit mode works
+3. Manual smoke test: email+password login, CRUD, kiosk renders, visit mode works
 
 ## Seeding data
 
@@ -76,13 +76,15 @@ Settings singleton: `INSERT INTO settings (id, visit_mode) VALUES (1, false) ON 
 
 ## Backlog
 
-### Top priorities
+(Previous top priorities — unified layout, kiosk font sizes, inline editing, dark mode, offline — all shipped; see the Sprint tables in KIOSK.md.)
 
-1. Unified kiosk layout (calendar + routines visible simultaneously)
-2. Font sizes for 2-3m readability
-3. Inline editing in `/editar`
-4. Dark mode (manual toggle)
-5. Offline resilience (cached last-known data)
+### Open ideas (unbuilt, low priority)
+
+1. Undo for deletions in `/editar`
+2. Drag-and-drop reordering (routines, replenish)
+3. Filters/search in admin lists
+4. Export/import data (JSON backup)
+5. PWA push notifications
 
 ### Anti-goals
 
