@@ -21,6 +21,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.hostname.includes('supabase')) return;
+  if (url.pathname.startsWith('/editar')) return;
 
   // Navigation: network-first, fallback to cache
   if (request.mode === 'navigate') {

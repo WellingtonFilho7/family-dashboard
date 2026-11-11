@@ -4,7 +4,7 @@
 
 Family Dashboard is a self-hosted family organization tool. Two routes:
 - `/painel` — public kiosk dashboard (ambient display, read-only)
-- `/editar` — admin panel (OTP-protected, phone-optimized CRUD)
+- `/editar` — admin panel (email+password, phone-optimized CRUD)
 
 Real household tool, not a demo or SaaS. PT-BR UI text, English code.
 
@@ -43,11 +43,11 @@ No custom backend. Path alias: `@/` = `src/`.
 Supabase (Postgres + RLS)
     ↓
 useKioskData(visitMode, options)   ← central hook
-    ↓ fetches 9 tables in parallel (Promise.all)
+    ↓ fetches family data via src/lib/api/*
     ↓ maps snake_case → camelCase
     ↓ applies privacy filtering
     ↓ auto-refreshes every 5 min + on tab focus
-    ↓ midnight rollover recalculates week
+    ↓ timezone-aware day rollover recalculates week
     ↓
 PanelPage / EditPage
 ```
@@ -56,11 +56,12 @@ PanelPage / EditPage
 
 | File | Role |
 |------|------|
-| `src/hooks/useKioskData.ts` | Central data hook — fetch, filter, auto-refresh, toggle routines |
-| `src/App.tsx` | Routes + PanelPage + CalendarGrid + KidsGrid + Sidebar + RightColumn |
+| `src/hooks/useKioskData.ts` | Panel data hook — orchestrates state, privacy filtering, refresh and routine toggles |
+| `src/lib/api/` | Supabase access layer (auth, settings, admin CRUD, family data fetch) |
+| `src/App.tsx` | Routes + public panel composition |
 | `src/pages/EditPage.tsx` | Admin CRUD (people, agenda, routines, replenish, content, config) |
 | `src/lib/types.ts` | All TypeScript interfaces |
-| `src/lib/supabase.ts` | Supabase client init (null if env vars missing) |
+| `src/lib/supabase.ts` | Public/admin Supabase clients with separate auth persistence |
 | `src/lib/date-utils.ts` | Timezone-aware date functions (default: America/Sao_Paulo) |
 | `src/lib/mockData.ts` | Dev fallback when Supabase isn't configured |
 | `src/components/ErrorBoundary.tsx` | Section-level crash containment |
@@ -72,7 +73,7 @@ Two layers:
 1. **`is_private` field** — per-record flag on most tables
 2. **`visitMode`** — global toggle in `settings` (singleton id=1)
 
-When active: private items filtered out, private people masked as "Familia."
+When active: private items filtered out, private people masked as "Família."
 
 **Rule**: `/painel` (anon) must NEVER leak private data. RLS enforces at DB level, `filterPrivate()` enforces at UI level.
 
@@ -110,18 +111,30 @@ Both persist to localStorage, set `data-desktop="1"` on `<html>`.
 
 ### Column mapping (DB → TS)
 
-`person_id` → `personId`, `day_of_week` → `dayOfWeek`, `is_private` → `isPrivate`, `time_text` → `timeText`, `sort_order` → `sortOrder`, `is_active` → `isActive`, `kid_person_id` → `kidPersonId`, `template_id` → `templateId`, `created_at` → `createdAt`, `visit_mode` → `visitMode`
+`day_of_week` → `dayOfWeek`, `is_private` → `isPrivate`, `sort_order` → `sortOrder`, `is_active` → `isActive`, `kid_person_id` → `kidPersonId`, `template_id` → `templateId`, `created_at` → `createdAt`, `visit_mode` → `visitMode`
+
+Target model:
+- `person_ids` is canonical for agenda ownership
+- `person_id` is legacy fallback until the DB is fully migrated
+- `timeText` in the app is derived from `start_time` / `end_time` when possible
 
 ### RLS
 
 - **Anon**: SELECT only, filtered by `is_private = false`. Exceptions: `kid_routine_checks`, `weekly_focus`, `settings` → open SELECT.
 - **Authenticated**: full CRUD via `auth.role() = 'authenticated'`.
 
+Open verification:
+- If children must mark routines from `/painel`, the real Supabase project needs anon write capability for `kid_routine_checks` or an equivalent safe path. Audit this before considering production RLS complete.
+
 ### Auth
 
-OTP via email (Supabase Auth). Redirect URLs:
+Email + password (Supabase Auth). Redirect URLs:
 - Prod: `https://<domain>/editar`
 - Dev: `http://localhost:5173/editar`
+
+Product rule:
+- No public self-service admin signup
+- Admin users should be created manually until an allowlist model exists
 
 ### Schema management
 

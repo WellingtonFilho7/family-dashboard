@@ -40,9 +40,12 @@ Without these, dev mode uses mock data from `src/lib/mockData.ts`.
 ## Quality bar
 
 **Must pass before merge:**
-1. `npm run build` succeeds
-2. App runs locally without errors
-3. Manual smoke test: OTP login, CRUD, kiosk renders, visit mode works
+1. `npm run lint`
+2. `npm run typecheck`
+3. `npm run test`
+4. `npm run build`
+5. App runs locally without errors
+6. Manual smoke test: email+password login, CRUD, kiosk renders, visit mode works, routine toggles still work on `/painel`
 
 ## Seeding data
 
@@ -55,7 +58,15 @@ Settings singleton: `INSERT INTO settings (id, visit_mode) VALUES (1, false) ON 
 1. Change in Supabase SQL Editor
 2. Update `supabase_schema_notes.sql`
 3. Update `src/lib/types.ts` if types changed
-4. Update mapper in `src/hooks/useKioskData.ts` if columns changed
+4. Update `src/lib/api/` and any mapper/adapter if columns changed
+
+## CI
+
+GitHub Actions runs on push/PR and must stay green:
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
 
 ## Code conventions
 
